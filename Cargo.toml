@@ -19,5 +19,10 @@ serde_with         = "3.8.1"
 serde_as           = "0.0.1"
 serde_json         = "1.0.117"
 headless_chrome    = "1.0.10"
-image              = "0.20.0"
+image              = "0.25.1"
 futures-util       = "0.3.30"
+short-uuid = "0.1.2"
+
+[lib]
+name = "lib"
+path = "src/lib/mod.rs"

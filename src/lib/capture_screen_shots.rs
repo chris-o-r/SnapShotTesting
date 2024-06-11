@@ -12,6 +12,7 @@ pub struct ScreenShotParams {
     pub id: String,
     pub folder: String,
 }
+
 pub async fn capture_screen_shots(
     urls: Vec<ScreenShotParams>,
 ) -> Vec<Result<String, std::io::Error>> {
@@ -19,7 +20,10 @@ pub async fn capture_screen_shots(
 
     let mut handles: Vec<task::JoinHandle<Vec<Result<String, std::io::Error>>>> = vec![];
 
-    let max_threads = urls.len() / 10;
+    let mut max_threads = urls.len() / 10;
+    if max_threads == 0 {
+        max_threads = 1;
+    }
 
     for chunk in urls.chunks(max_threads) {
         let browser = browser.clone();
@@ -38,7 +42,7 @@ pub async fn capture_screen_shots(
         }));
     }
 
-    println!("Threads started, length: {}", handles.len());
+    tracing::info!("Threads started, length: {}", handles.len());
 
     let results = join_all(handles).await;
     results.into_iter().flat_map(|res| res.unwrap()).collect()
@@ -73,5 +77,57 @@ fn safe_save_image(
     match fs::write(&file_name, raw_image) {
         Ok(_) => Ok(file_name),
         Err(e) => Err(e),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_capture_screen_shots() {
+        let urls = vec![
+            ScreenShotParams {
+                url: "https://www.google.com".to_string(),
+                id: "google".to_string(),
+                folder: "test".to_string(),
+            },
+            ScreenShotParams {
+                url: "https://www.bing.com".to_string(),
+                id: "bing".to_string(),
+                folder: "test".to_string(),
+            },
+        ];
+
+        let result = capture_screen_shots(urls);
+        result.await.into_iter().for_each(|res| {
+            assert_eq!(res.is_ok(), true);
+        });
+
+        let path1 = Path::new("assets/test/google.png");
+        let path2 = Path::new("assets/test/bing.png");
+        assert_eq!(Path::exists(path1), true);
+        assert_eq!(Path::exists(path2), true);
+
+        fs::remove_file(path1).unwrap();
+        fs::remove_file(path2).unwrap();
+        fs::remove_dir("assets/test").unwrap();
+    }
+
+    #[test]
+    fn test_safe_save_image() {
+        let image = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let folder = "test";
+        let image_name = "test_image";
+
+        let result = safe_save_image(image, folder, image_name);
+
+        assert_eq!(result.is_ok(), true);
+
+        let path = Path::new("assets/test/test_image.png");
+        assert_eq!(Path::exists(path), true);
+
+        fs::remove_file(path).unwrap();
+        fs::remove_dir("assets/test").unwrap();
     }
 }
