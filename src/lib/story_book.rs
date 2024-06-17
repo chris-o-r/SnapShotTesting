@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
-use axum::http::Response;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use short_uuid::short;
 
 use super::capture_screen_shots::ScreenShotParams;
+use anyhow::Error;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde_with::serde_as]
@@ -23,48 +22,45 @@ pub struct StoryBookConfigEntry {
     pub r#type: String,
 }
 
-pub async fn get_story_book_config(url: &str) -> Result<StoryBookConfig, String> {
+pub async fn get_story_book_config(url: &str) -> Result<StoryBookConfig, Error> {
     tracing::info!("Fetching storybook config from: {}", url);
-    let response = reqwest::get(format!("http://{}/index.json", url))
-        .await
-        .map_err(|e| e.to_string())?;
 
-    let body = response.text().await.map_err(|e| e.to_string())?;
+    let response = reqwest::get(format!("http://{}/index.json", url)).await?;
 
-    let config: StoryBookConfig = serde_json::from_str(body.as_str())
-        .map_err(|_| format!("Error parsing config from {}", { url }))?;
+    let body = response.text().await?;
+
+    let config: StoryBookConfig = serde_json::from_str(body.as_str())?;
 
     Ok(config)
 }
 
-pub async fn get_screen_shot_params_by_url(url: String) -> Result<Vec<ScreenShotParams>, String> {
-    let config = match get_story_book_config(url.as_str()).await {
-        Ok(config) => {
-            let config_filtered = config
-                .entries
-                .into_iter()
-                .filter(|entry| entry.1.r#type == "story")
-                .collect();
+pub async fn get_screen_shot_params_by_url(
+    url: &str,
+    folder_name: &str,
+) -> Result<Vec<ScreenShotParams>, Error> {
+    let story_book_config = get_story_book_config(url).await?;
 
-            StoryBookConfig {
-                v: config.v,
-                entries: config_filtered,
-            }
-        }
-        Err(e) => return Err(e.to_string()),
-    };
+    let config_filtered = story_book_config
+        .entries
+        .into_iter()
+        .filter(|entry| entry.1.r#type == "story")
+        .collect();
 
-    Ok(get_screen_shot_params_from_config(config, url.as_str()))
+    Ok(get_screen_shot_params_from_config(
+        StoryBookConfig {
+            v: story_book_config.v,
+            entries: config_filtered,
+        },
+        url,
+        folder_name,
+    ))
 }
 
-fn get_screen_shot_params_from_config(config: StoryBookConfig, url: &str) -> Vec<ScreenShotParams> {
-    let time = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-
-    let random_folder_name: String = format!("{}-{}", time, short!());
-
+fn get_screen_shot_params_from_config(
+    config: StoryBookConfig,
+    url: &str,
+    folder_name: &str,
+) -> Vec<ScreenShotParams> {
     config
         .entries
         .into_iter()
@@ -74,7 +70,7 @@ fn get_screen_shot_params_from_config(config: StoryBookConfig, url: &str) -> Vec
                 url, entry.1.id
             ),
             id: entry.1.id,
-            folder: random_folder_name.clone(),
+            folder: folder_name.to_string(),
         })
         .collect()
 }

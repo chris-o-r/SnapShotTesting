@@ -10,7 +10,7 @@ diffimg            = { path = "../../rust/diffimg-rs" }
 axum               = "0.7.5"
 serde              = { version = "1.0.188", features = ["derive"] }
 tokio              = { version = "1.32.0", features = ["full"] }
-tower-http         = { version = "0.5.0", features = ["fs", "trace"] }
+tower-http         = { version = "0.5.0", features = ["fs", "trace", "cors"] }
 tower              = { version = "0.4", features = ["util"] }
 tracing            = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -22,6 +22,8 @@ headless_chrome    = "1.0.10"
 image              = "0.25.1"
 futures-util       = "0.3.30"
 short-uuid = "0.1.2"
+num_cpus = "1.16.0"
+anyhow = "1.0.86"
 
 [lib]
 name = "lib"

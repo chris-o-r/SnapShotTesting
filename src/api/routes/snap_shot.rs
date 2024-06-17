@@ -1,10 +1,16 @@
-use axum::{body::Body, extract::Query, http::Response, response::IntoResponse};
+use anyhow::Error;
+use axum::body::Body;
+use axum::http::{Response, StatusCode};
+use axum::{extract::Query, response::IntoResponse};
+use lib::compare_images::CompareImagesReturn;
 use lib::{
     capture_screen_shots::capture_screen_shots, compare_images,
     story_book::get_screen_shot_params_by_url,
 };
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::{fmt, str::FromStr, time};
+
+use crate::api::errors::AppError;
 
 #[derive(Debug, Deserialize)]
 pub struct SnapShotParams {
@@ -18,7 +24,17 @@ pub struct SnapShotParams {
 pub struct SnapShotResponse {
     pub new_images_paths: Vec<String>,
     pub old_images_paths: Vec<String>,
-    pub diff_images_paths: Vec<String>,
+    pub diff_images_paths: CompareImagesReturn,
+}
+
+impl IntoResponse for SnapShotResponse {
+    fn into_response(self) -> Response<Body> {
+        (
+            StatusCode::OK,
+            serde_json::to_string(&self).unwrap_or_default(),
+        )
+            .into_response()
+    }
 }
 
 /// Serde deserialization decorator to map empty Strings to None,
@@ -35,63 +51,60 @@ where
     }
 }
 
-pub async fn handle_snap_shot(Query(params): Query<SnapShotParams>) -> impl IntoResponse {
+pub async fn handle_snap_shot(
+    Query(params): Query<SnapShotParams>,
+) -> Result<SnapShotResponse, AppError> {
     let time_start = time::Instant::now();
 
     let new = match params.new {
         Some(new) => new,
         None => {
-            return Response::new(Body::from("New URL is required"));
+            return Err(AppError(
+                Error::msg("New URL is required"),
+                StatusCode::BAD_REQUEST,
+            ))
         }
     };
     let old = match params.old {
         Some(old) => old,
         None => {
-            return Response::new(Body::from("Old URL is required"));
-        }
-    };
-    tracing::info!("Getting snapshots for new: {}", new,);
-
-    let image_1_params = match get_screen_shot_params_by_url(new).await {
-        Ok(images) => images,
-        Err(e) => {
-            return Response::new(Body::from(format!(
-                "Error getting screen shots for new: {}",
-                e
-            )))
+            return Err(AppError(
+                Error::msg("New URL is required"),
+                StatusCode::BAD_REQUEST,
+            ));
         }
     };
 
-    let images_1: Vec<String> = capture_screen_shots(image_1_params)
-        .await
-        .into_iter()
-        .map(|res| res.unwrap())
-        .collect();
+    tracing::debug!("Getting snapshots for new: {}", new,);
+
+    let random_folder_name = format!(
+        "{}-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
+        short_uuid::short!()
+    );
+    let images_1: Vec<String> =
+        handle_snap_shot_for_url(&new, &random_folder_name.as_str(), "new").await?;
 
     let mut elapsed: time::Duration = time_start.elapsed();
-    tracing::info!("Elapsed time: {:?}", elapsed);
-    tracing::info!("Getting snapshots for old: {}", old);
+    tracing::debug!("Elapsed time: {:?}", elapsed);
+    tracing::debug!("Getting snapshots for old: {}", old);
 
-    let image_2_params = match get_screen_shot_params_by_url(old).await {
-        Ok(images) => images,
-        Err(e) => {
-            return Response::new(Body::from(format!(
-                "Error getting screen shots for old: {}",
-                e
-            )))
-        }
-    };
-    let images_2: Vec<String> = capture_screen_shots(image_2_params)
-        .await
-        .into_iter()
-        .map(|res| res.unwrap())
-        .collect();
+    let images_2: Vec<String> =
+        handle_snap_shot_for_url(&old, random_folder_name.as_str(), "old").await?;
 
     elapsed = time_start.elapsed();
 
     tracing::info!("Elapsed time: {:?}", elapsed);
     tracing::info!("Comparing images");
-    let diff_images = compare_images::compare_images(images_1.clone(), images_2.clone()).await;
+    let diff_images = compare_images::compare_images(
+        images_1.clone(),
+        images_2.clone(),
+        random_folder_name.as_str(),
+    )
+    .await;
 
     elapsed = time_start.elapsed();
 
@@ -103,5 +116,15 @@ pub async fn handle_snap_shot(Query(params): Query<SnapShotParams>) -> impl Into
         diff_images_paths: diff_images.unwrap(),
     };
 
-    Response::new(Body::from(serde_json::to_string(&result).unwrap()))
+    Ok(result)
+}
+
+async fn handle_snap_shot_for_url(
+    url: &str,
+    random_folder_name: &str,
+    param_name: &str,
+) -> Result<Vec<String>, Error> {
+    let image_params = get_screen_shot_params_by_url(url, param_name).await?;
+
+    capture_screen_shots(image_params, random_folder_name).await
 }
