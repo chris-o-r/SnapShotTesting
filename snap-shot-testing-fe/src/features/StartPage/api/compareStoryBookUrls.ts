@@ -1,6 +1,13 @@
-import { queryOptions, useIsFetching, useQuery } from "@tanstack/react-query";
+import {
+  MutationFunction,
+  queryOptions,
+  useIsFetching,
+  useMutation,
+  useQuery,
+} from "@tanstack/react-query";
 import axios from "axios";
 import { API_BASE_URL } from "../../../constants";
+import { QueryClient } from "../../../App";
 
 export const COMPARE_STORY_BOOK_URLS_QUERY_KEY = "compare_story_book_urls";
 
@@ -19,32 +26,41 @@ export type CompareStoryBookUrlsResponse = {
 };
 
 export const useFetchCompareStoryBookUrls = (
-  oldStoryBookUrl: string,
-  newStoryBookUrl: string,
-  isEnabled: boolean
+  params: CompareStoryBookUrlsRequest,
+  isEnabled: boolean = false
 ) => {
-  return useQuery(
-    fetchCompareStoryBookUrlsQueryOptions(
-      oldStoryBookUrl,
-      newStoryBookUrl,
-      isEnabled
-    )
-  );
+  return useQuery(fetchCompareStoryBookUrlsQueryOptions(params, isEnabled));
+};
+
+export const useMutateCompareStoryBookUrls = () => {
+  return useMutation({
+    mutationFn: compareStoryBookUrls,
+    mutationKey: [COMPARE_STORY_BOOK_URLS_QUERY_KEY],
+    onSuccess: async (data, params) => {
+      await QueryClient.invalidateQueries({
+        queryKey: [COMPARE_STORY_BOOK_URLS_QUERY_KEY, params.old, params.new],
+      });
+
+      QueryClient.setQueryData(
+        [COMPARE_STORY_BOOK_URLS_QUERY_KEY, params.old, params.new],
+        data
+      );
+
+      return data;
+    },
+  });
 };
 
 const fetchCompareStoryBookUrlsQueryOptions = (
-  oldStoryBookUrl: string,
-  newStoryBookUrl: string,
-  isEnabled: boolean
+  params: CompareStoryBookUrlsRequest,
+  isEnabled = true
 ) => {
   return queryOptions({
-    queryKey: [
-      COMPARE_STORY_BOOK_URLS_QUERY_KEY,
-      oldStoryBookUrl,
-      newStoryBookUrl,
-    ],
-    queryFn: () => compareStoryBookUrls(oldStoryBookUrl, newStoryBookUrl),
-    staleTime: 1000 * 60 * 60 * 24,
+    queryKey: [COMPARE_STORY_BOOK_URLS_QUERY_KEY, params.old, params.new],
+    queryFn: () => compareStoryBookUrls(params),
+
+    gcTime: Infinity,
+    // staleTime: 1000 * 60 * 60 * 24,
     enabled: isEnabled,
   });
 };
@@ -53,18 +69,13 @@ export const useIsFetchingCompareStoryBookUrls = () => {
   return useIsFetching({ queryKey: [COMPARE_STORY_BOOK_URLS_QUERY_KEY] });
 };
 
-const compareStoryBookUrls = async (
-  oldStoryBookUrl: string,
-  newStoryBookUrl: string
-) => {
-  const request: CompareStoryBookUrlsRequest = {
-    new: newStoryBookUrl,
-    old: oldStoryBookUrl,
-  };
+const compareStoryBookUrls: MutationFunction<
+  CompareStoryBookUrlsResponse,
+  CompareStoryBookUrlsRequest
+> = async (params: CompareStoryBookUrlsRequest) => {
+  const urlParams = new URLSearchParams(params).toString();
 
-  const urlParams = new URLSearchParams(request).toString();
-
-  return axios.get<CompareStoryBookUrlsResponse>(
-    `${API_BASE_URL}/snap-shot?${urlParams}`
-  );
+  return axios
+    .get<CompareStoryBookUrlsResponse>(`${API_BASE_URL}/snap-shot?${urlParams}`)
+    .then((res) => res.data);
 };

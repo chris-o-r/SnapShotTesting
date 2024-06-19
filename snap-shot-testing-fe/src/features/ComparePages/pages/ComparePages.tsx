@@ -1,6 +1,6 @@
-import { Layout, Menu, MenuProps } from "antd";
+import { Layout, Menu, MenuProps, Spin } from "antd";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CompareStoryBookUrlsResponse,
   useFetchCompareStoryBookUrls,
@@ -18,11 +18,10 @@ export const ComparePages = () => {
   const oldUrl = params.get("old");
   const newUrl = params.get("new");
 
-  const { data } = useFetchCompareStoryBookUrls(
-    oldUrl!,
-    newUrl!,
-    !oldUrl && !newUrl
-  );
+  const { ...rest } = useFetchCompareStoryBookUrls({
+    old: oldUrl!,
+    new: newUrl!,
+  });
 
   const onClick: MenuProps["onClick"] = (e) => {
     console.log("click ", e);
@@ -32,8 +31,6 @@ export const ComparePages = () => {
       setCurrentImage(e.key);
     }
   };
-
-  if (!data) return null;
 
   const getMenuItems = (
     data: CompareStoryBookUrlsResponse
@@ -102,25 +99,23 @@ export const ComparePages = () => {
           }),
         };
       }
-      //  else if (key === "old_images_paths" || key === "new_images_paths") {
-      //   return {
-      //     key,
-      //     label: getTitle(key),
-      //     children: value.map((item) => {
-      //       return {
-      //         key: item,
-      //         label: item,
-      //       };
-      //     }),
-      //   };
-      // }
     });
   };
+
+  if (rest.isPending)
+    return (
+      <div className="space-y-4 flex flex-col items-center h-[100vh] w-full justify-center">
+        <Spin />
+        <p className="text-black">Fetching please wait...</p>
+      </div>
+    );
 
   return (
     <>
       <Header style={{ display: "flex", color: "white", alignItems: "center" }}>
-        <h1 className="text-2xl">Comparing {oldUrl} with {newUrl}</h1>
+        <h1 className="text-2xl">
+          Comparing {oldUrl} with {newUrl}
+        </h1>
       </Header>
       <Content>
         <Layout>
@@ -136,7 +131,7 @@ export const ComparePages = () => {
           >
             <Menu
               theme="dark"
-              items={getMenuItems(data?.data)}
+              items={getMenuItems(rest.data!)}
               style={{ height: "100%" }}
               defaultSelectedKeys={["1"]}
               defaultOpenKeys={["diff_images_paths"]}

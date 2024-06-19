@@ -1,33 +1,37 @@
 import { Button, Form, Input, Spin } from "antd";
 import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import {
+  COMPARE_STORY_BOOK_URLS_QUERY_KEY,
   CompareStoryBookUrlsRequest,
-  useFetchCompareStoryBookUrls,
+  useMutateCompareStoryBookUrls,
 } from "../api/compareStoryBookUrls";
-import {} from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Content } from "antd/es/layout/layout";
+import { QueryClient } from "../../../App";
 type StartPageForm = {
   oldStoryBookUrl: string;
   newStoryBookUrl: string;
 };
 
 export const StartPage = () => {
-  const { control, handleSubmit, getValues, formState } =
-    useForm<StartPageForm>({
-      mode: "onChange",
-    });
+  const { control, handleSubmit, getValues } = useForm<StartPageForm>({
+    mode: "onChange",
+  });
 
   const navigate = useNavigate();
 
-  const { isFetching, isSuccess } = useFetchCompareStoryBookUrls(
-    getValues("oldStoryBookUrl"),
-    getValues("newStoryBookUrl"),
-    formState.isSubmitSuccessful
-  );
+  const mutate = useMutateCompareStoryBookUrls();
 
   useEffect(() => {
-    if (isSuccess) {
+    QueryClient.cancelQueries({
+      queryKey: [COMPARE_STORY_BOOK_URLS_QUERY_KEY],
+      exact: false,
+    });
+  });
+
+  useEffect(() => {
+    if (mutate.isSuccess) {
       const request: CompareStoryBookUrlsRequest = {
         new: getValues("newStoryBookUrl"),
         old: getValues("oldStoryBookUrl"),
@@ -36,32 +40,44 @@ export const StartPage = () => {
       const urlParams = new URLSearchParams(request).toString();
       navigate(`/compare?${urlParams.toString()}`);
     }
-  }, [isSuccess]);
+  }, [getValues, mutate.isSuccess, navigate]);
 
   const onSubmit: SubmitHandler<StartPageForm> = (data) => {
-    console.log(data);
+    mutate.mutate({
+      new: data.newStoryBookUrl,
+      old: data.oldStoryBookUrl,
+    });
   };
 
-  if (isFetching)
+  if (mutate.status === "pending")
     return (
       <div className="space-y-4 flex flex-col items-center h-[100vh] w-full justify-center">
         <Spin />
-        <p>Fetching please wait...</p>
+        <p className="text-black">Fetching please wait...</p>
       </div>
     );
 
   return (
-    <div className="space-y-4 flex flex-col items-center h-[100vh] w-full justify-center">
-      <h1>Start Page</h1>
-      <p>Please enter two story book urls to get started</p>
+    <Content className="space-y-4 flex flex-col items-center  justify-center">
+      <h1 className="text-4xl font-sans font-bold text-black">
+        Snap Shot Testing
+      </h1>
+      <p className="text-black">
+        Please enter two story book urls to get started
+      </p>
 
       <Form
         name="basic"
-        labelCol={{ span: 8 }}
-        wrapperCol={{ span: 16 }}
-        style={{ maxWidth: 600 }}
+        // labelCol={{ span: 16 }}
+        // wrapperCol={{ span: 32 }}
+        // wrapperCol={{ span: 32 }}
+        // style={{ maxWidth: 120 }}
+        className="flex flex-col items-center  justify-center"
         initialValues={{ remember: true }}
-        onSubmitCapture={handleSubmit(onSubmit)}
+        onSubmitCapture={(e) => {
+          e.preventDefault();
+          handleSubmit(onSubmit);
+        }}
         autoComplete="off"
       >
         <Form.Item<StartPageForm>
@@ -73,7 +89,7 @@ export const StartPage = () => {
             name="oldStoryBookUrl"
             defaultValue=""
             control={control}
-            render={({ field }) => <Input {...field} />}
+            render={({ field }) => <Input className="min-w-48" {...field} />}
           />
         </Form.Item>
         <Form.Item<StartPageForm>
@@ -85,18 +101,19 @@ export const StartPage = () => {
             name="newStoryBookUrl"
             defaultValue=""
             control={control}
-            render={({ field }) => <Input {...field} />}
+            render={({ field }) => <Input className="min-w-48" {...field} />}
           />
         </Form.Item>
-
-        <Button
-          type="primary"
-          htmlType="submit"
-          onClick={handleSubmit(onSubmit)}
-        >
-          Submit
-        </Button>
+        <Form.Item>
+          <Button
+            type="primary"
+            htmlType="submit"
+            onClick={handleSubmit(onSubmit)}
+          >
+            Submit
+          </Button>
+        </Form.Item>
       </Form>
-    </div>
+    </Content>
   );
 };

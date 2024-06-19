@@ -1,46 +1,72 @@
-import { Component } from "react";
-import { ErrorInfo } from "react";
+import { Layout } from "antd";
+import { Content } from "antd/es/layout/layout";
+import React from "react";
 
-interface ErrorBoundaryProps {
+type Props = {
   children: React.ReactNode;
-}
+  fallback?: React.ReactNode;
+};
 
-interface ErrorBoundaryState {
+type State = {
+  error?: Error;
   hasError: boolean;
-  error: Error | null;
-}
-
-export class ErrorBoundary extends Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
-  state: ErrorBoundaryState;
-  props: ErrorBoundaryProps; // Add this line
-  constructor(props: ErrorBoundaryProps) {
+  path: string;
+  dateTime: Date;
+};
+export class ErrorBoundary extends React.Component<Props, State> {
+  constructor(props: Props) {
     super(props);
     this.state = {
       hasError: false,
-      error: null,
+      dateTime: new Date(),
+      path: window.location.pathname,
     };
   }
 
   static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // You can log the error or send it to an error reporting service
-    console.error("Error caught by ErrorBoundary:", error, errorInfo);
+    console.error(error);
+    return {
+      hasError: true,
+      error,
+      dateTime: new Date(),
+      path: window.location.pathname,
+    };
   }
 
   render() {
-    if (this.state.hasError) {
-      // You can customize the error message here
-      return <h1>Something went wrong.</h1>;
+    const { children } = this.props;
+    const { hasError } = this.state;
+
+    if (hasError) {
+      return (
+        <Layout>
+          <Content className="space-y-4">
+            {!import.meta.env.DEV ? (
+              <div className="bg-black p-4">
+                <p className="!text-white">
+                  <span className="!text-red-500">Error:</span>{" "}
+                  {this.state.error?.message}
+                </p>
+                <p className="!text-white">
+                  <span className="!text-red-500">Stack:</span>{" "}
+                  {this.state.error?.stack}
+                </p>
+                <p className="!text-white">
+                  <span className="!text-red-500">Time:</span>{" "}
+                  {this.state.dateTime.toJSON()}
+                </p>
+                <p className="!text-white">
+                  <span className="!text-red-500">Path:</span> {this.state.path}
+                </p>
+              </div>
+            ) : (
+              <></>
+            )}
+          </Content>
+        </Layout>
+      );
     }
 
-    return this.props.children;
+    return children;
   }
 }
-
-export default ErrorBoundary;
