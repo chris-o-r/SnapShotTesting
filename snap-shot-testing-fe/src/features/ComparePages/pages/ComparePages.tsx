@@ -1,6 +1,6 @@
 import { Layout, Menu, MenuProps, Spin } from "antd";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   CompareStoryBookUrlsResponse,
   useFetchCompareStoryBookUrls,

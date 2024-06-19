@@ -1,7 +1,7 @@
 use anyhow::Error;
 use axum::body::Body;
 use axum::http::{Response, StatusCode};
-use axum::{extract::Query, response::IntoResponse};
+use axum::{extract, response::IntoResponse};
 use lib::compare_images::CompareImagesReturn;
 use lib::{
     capture_screen_shots::capture_screen_shots, compare_images,
@@ -52,11 +52,11 @@ where
 }
 
 pub async fn handle_snap_shot(
-    Query(params): Query<SnapShotParams>,
+    extract::Json(payload): extract::Json<SnapShotParams>,
 ) -> Result<SnapShotResponse, AppError> {
     let time_start = time::Instant::now();
 
-    let new = match params.new {
+    let new = match payload.new {
         Some(new) => new,
         None => {
             return Err(AppError(
@@ -65,7 +65,7 @@ pub async fn handle_snap_shot(
             ))
         }
     };
-    let old = match params.old {
+    let old = match payload.old {
         Some(old) => old,
         None => {
             return Err(AppError(

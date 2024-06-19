@@ -5,7 +5,7 @@ import {
   useMutation,
   useQuery,
 } from "@tanstack/react-query";
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import { API_BASE_URL } from "../../../constants";
 import { QueryClient } from "../../../App";
 
@@ -73,9 +73,10 @@ const compareStoryBookUrls: MutationFunction<
   CompareStoryBookUrlsResponse,
   CompareStoryBookUrlsRequest
 > = async (params: CompareStoryBookUrlsRequest) => {
-  const urlParams = new URLSearchParams(params).toString();
-
   return axios
-    .get<CompareStoryBookUrlsResponse>(`${API_BASE_URL}/snap-shot?${urlParams}`)
+    .post<
+      CompareStoryBookUrlsRequest,
+      AxiosResponse<CompareStoryBookUrlsResponse>
+    >(`${API_BASE_URL}/snap-shot`, params)
     .then((res) => res.data);
 };

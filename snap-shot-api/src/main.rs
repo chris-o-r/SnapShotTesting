@@ -1,6 +1,6 @@
 pub mod api;
 use api::routes::snap_shot::handle_snap_shot;
-use axum::{routing::get, Router};
+use axum::{routing::post, Router};
 use std::net::SocketAddr;
 use tower_http::{
     cors::{Any, CorsLayer},
@@ -20,8 +20,7 @@ async fn main() {
 fn using_serve_file_from_a_route() -> Router {
     Router::new()
         .nest_service("/assets", ServeDir::new("assets"))
-        // .route_service("/foo", ServeFile::new("assets/index.html"))
-        .route("/snap-shot", get(handle_snap_shot))
+        .route("/snap-shot", post(handle_snap_shot))
 }
 
 async fn serve(app: Router, port: u16) {

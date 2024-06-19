@@ -1,9 +1,10 @@
 use anyhow::Error;
 use diffimg;
+use futures_util::future::join_all;
 use image;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use tokio::task;
+use tokio::task::{self};
 
 use crate::save_images;
 
@@ -76,12 +77,19 @@ pub async fn compare_images(
         diff_images_paths: Vec::new(),
     };
 
-    for handle in handles {
-        let paths = handle.await??;
-        result.created_images_paths.extend(paths.created_images_paths);
-        result.deleted_images_paths.extend(paths.deleted_images_paths);
-        result.diff_images_paths.extend(paths.diff_images_paths);
-    }
+    join_all(handles.into_iter())
+        .await
+        .into_iter()
+        .for_each(|handle| {
+            let paths = handle.unwrap().unwrap();
+            result
+                .created_images_paths
+                .extend(paths.created_images_paths);
+            result
+                .deleted_images_paths
+                .extend(paths.deleted_images_paths);
+            result.diff_images_paths.extend(paths.diff_images_paths);
+        });
 
     Ok(result)
 }
