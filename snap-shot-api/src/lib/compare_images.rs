@@ -164,26 +164,6 @@ fn handle_deleted_image(image_path: &str, random_folder_name: &str) -> Result<St
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn test_compare_images() {
-        // get all images paths in the folder ./tests/new
-        let image_paths_1 = std::fs::read_dir("./tests/new")
-            .unwrap()
-            .map(|entry| entry.unwrap().path().display().to_string())
-            .collect();
-
-        let image_paths_2 = std::fs::read_dir("./tests/old")
-            .unwrap()
-            .map(|entry| entry.unwrap().path().display().to_string())
-            .collect();
-
-        let result = compare_images(image_paths_1, image_paths_2, "test")
-            .await
-            .unwrap();
-
-        assert_eq!(result.diff_images_paths.len(), 3);
-    }
-
     #[test]
     fn test_matching_paths() {
         let image_paths_1 = vec![

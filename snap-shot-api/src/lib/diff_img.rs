@@ -1,5 +1,4 @@
 extern crate image;
-use std::path::Path;
 
 use image::{DynamicImage, GenericImageView, ImageBuffer, Pixel, Rgb, RgbImage, Rgba};
 
@@ -16,31 +15,6 @@ fn abs_diff(x: u8, y: u8) -> u8 {
         return x - y;
     }
     return y - x;
-}
-
-/// Return the image from the file path, or throw an error
-fn safe_load_image(raw_path: &str) -> Result<DynamicImage, String> {
-    let path = &Path::new(raw_path);
-    if !Path::exists(path) {
-        return Err(format!("Path \"{}\" does not exist", raw_path));
-    }
-
-    image::open(path).map_err(|msg| format!("{:?}", msg))
-}
-
-// Check if two images are the same size and color mode
-fn validate_image_compatibility(
-    image1: &DynamicImage,
-    image2: &DynamicImage,
-) -> Result<(), String> {
-    if image1.dimensions() != image2.dimensions() {
-        return Err("images must have the same dimensions".to_string());
-    }
-    if image1.color() != image2.color() {
-        return Err("images must have the same color mode".to_string());
-    }
-
-    Ok(())
 }
 
 // Return a difference ratio between 0 and 1 for the two images
@@ -211,28 +185,6 @@ fn blend_rgb_pixels(
         out_b.min(255.0).max(0.0) as u8,
     )
 }
-
-// Run the appropriate diffing process given the configuration settings
-// pub fn run(config: config::Config) -> Result<(), String> {
-//     let image1 = safe_load_image(&config.image1)?;
-//     let image2 = safe_load_image(&config.image2)?;
-
-//     validate_image_compatibility(&image1, &image2)?;
-
-//     match config.filename {
-//         Some(filename) => {
-//             // run this operaton 20 times
-//             get_diff_from_images(image1.clone(), image2.clone(), filename, BlendMode::HUE)?;
-
-//             println!("Wrote diff image to {}", filename);
-//         }
-//         None => {
-//             let ratio = calculate_diff_ratio(image1, image2);
-//             println!("{}", ratio);
-//         }
-//     }
-//     Ok(())
-// }
 
 #[cfg(test)]
 mod tests {
