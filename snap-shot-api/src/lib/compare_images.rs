@@ -1,5 +1,5 @@
+use crate::diff_img;
 use anyhow::Error;
-use diffimg;
 use futures_util::future::join_all;
 use image;
 use serde::{Deserialize, Serialize};
@@ -120,7 +120,7 @@ fn handle_compare_image(
     let image_1 = image::open(&image_1_path).unwrap();
     let image_2 = image::open(&image_2_path).unwrap();
 
-    let ratio = diffimg::calculate_diff_ratio(image_1.clone(), image_2.clone());
+    let ratio = diff_img::calculate_diff_ratio(image_1.clone(), image_2.clone());
 
     if ratio < DIFF_RATIO_THRESHOLD {
         tracing::info!("Images are identical: {}", image_1_path);
@@ -134,7 +134,7 @@ fn handle_compare_image(
     );
 
     let image_path =
-        diffimg::get_diff_from_images(image_1, image_2, &file_name, diffimg::BlendMode::HUE)
+        diff_img::get_diff_from_images(image_1, image_2, &file_name, diff_img::BlendMode::HUE)
             .map_err(|e| Error::msg(e.to_string()))?;
 
     Ok(Some(image_path))
