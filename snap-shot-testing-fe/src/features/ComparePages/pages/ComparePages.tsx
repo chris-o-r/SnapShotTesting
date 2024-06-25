@@ -88,6 +88,7 @@ export const ComparePages = () => {
           }),
         };
       } else {
+        if (key === "id") return;
         return {
           key,
           label: getTitle(key),

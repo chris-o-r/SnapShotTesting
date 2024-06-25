@@ -25,7 +25,7 @@ pub struct StoryBookConfigEntry {
 pub async fn get_story_book_config(url: &str) -> Result<StoryBookConfig, Error> {
     tracing::info!("Fetching storybook config from: {}", url);
 
-    let response = reqwest::get(format!("http://{}/index.json", url)).await?;
+    let response: reqwest::Response = reqwest::get(format!("http://{}/index.json", url)).await?;
 
     let body = response.text().await?;
 

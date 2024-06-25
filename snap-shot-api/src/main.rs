@@ -1,7 +1,10 @@
 pub mod api;
+pub mod db;
+pub mod models;
 use api::routes::snap_shot::handle_snap_shot;
 use axum::{routing::post, Router};
-use std::net::SocketAddr;
+use models::app_state::AppState;
+use std::{net::SocketAddr, sync::Arc};
 use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
@@ -11,16 +14,23 @@ use tracing::Level;
 
 #[tokio::main]
 async fn main() {
+    let app_state: Arc<AppState> = Arc::new(AppState::new().await);
+
     tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(tracing_subscriber::filter::LevelFilter::INFO)
         .init();
-    tokio::join!(serve(using_serve_file_from_a_route(), 3307));
+
+    tokio::join!(serve(
+        create_routes(app_state.clone()),
+        app_state.env_variables.port.parse().unwrap()
+    ));
 }
 
-fn using_serve_file_from_a_route() -> Router {
+fn create_routes(app_state: Arc<AppState>) -> Router {
     Router::new()
         .nest_service("/assets", ServeDir::new("assets"))
         .route("/snap-shot", post(handle_snap_shot))
+        .with_state(app_state.clone())
 }
 
 async fn serve(app: Router, port: u16) {
@@ -36,8 +46,8 @@ async fn serve(app: Router, port: u16) {
         listener,
         app.layer(
             TraceLayer::new_for_http()
-                .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
-                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
+                .make_span_with(trace::DefaultMakeSpan::new().level(Level::DEBUG))
+                .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
         )
         .layer(cors),
     )

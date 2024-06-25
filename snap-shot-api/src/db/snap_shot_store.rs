@@ -1,0 +1,62 @@
+use anyhow::Result;
+use sqlx::{Pool, Postgres};
+
+use crate::models::snap_shot::SnapShot;
+
+pub async fn insert_snap_shots(
+    pool: &Pool<Postgres>,
+    snap_shots: Vec<SnapShot>,
+) -> Result<(), anyhow::Error> {
+    let sql = r"
+    INSERT INTO snap_shots (
+            batch_id,
+            name,
+            path,
+            snap_shot_type,
+            created_at
+        )
+    SELECT * FROM UNNEST(
+        $1::UUID[],
+        $2::VARCHAR(100)[],
+        $3::VARCHAR(200)[],
+        $4::VARCHAR(100)[],
+        $5::TIMESTAMP[]
+    )";
+
+    let batch_ids: Vec<String> = snap_shots.iter().map(|s| s.batch_id.clone()).collect();
+
+    let names = snap_shots
+        .iter()
+        .map(|s| s.name.clone())
+        .collect::<Vec<String>>();
+
+    let paths = snap_shots
+        .iter()
+        .map(|s| s.path.clone())
+        .collect::<Vec<String>>();
+
+    let snap_shot_types = snap_shots
+        .iter()
+        .map(|s| s.snap_shot_type.clone())
+        .collect::<Vec<String>>();
+
+    let created_ats = snap_shots
+        .iter()
+        .map(|s| s.created_at)
+        .collect::<Vec<chrono::DateTime<chrono::Utc>>>();
+
+    sqlx::query_as::<_, SnapShot>(sql)
+        .bind(batch_ids)
+        .bind(names)
+        .bind(paths)
+        .bind(snap_shot_types)
+        .bind(created_ats)
+        .fetch_all(pool)
+        .await
+        .map_err(|err| {
+            tracing::error!("Cannot insert snap shots [{}]", err.to_string());
+            err
+        })?;
+
+    Ok(())
+}

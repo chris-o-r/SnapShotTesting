@@ -18,6 +18,16 @@ services:
       - "3000:80"
     networks:
       - app-network
+  postgres:
+    image: postgres:14-alpine
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_DB: mydatabase
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+    volumes:
+      - ../postrgress/pgdata:/var/lib/postgresql/data
 
 networks:
   app-network:

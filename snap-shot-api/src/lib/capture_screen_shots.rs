@@ -31,26 +31,11 @@ pub async fn capture_screen_shots(
     }
 
     for chunk in urls.chunks(max_threads) {
-        let browser = browser.clone();
+        let browser: Arc<Browser> = browser.clone();
         let chunk = chunk.to_vec();
         let random_folder_name = random_folder_name.to_string();
-        handles.push(task::spawn(async move {
-            let mut results: Vec<String> = vec![];
-
-            let tab = browser
-                .new_tab()
-                .map_err(|e| anyhow::Error::msg(e.to_string()))?;
-
-            for url in chunk {
-                let screen_shot = get_screen_shot(&tab, &url.url);
-                let folder_name = format!("{}/{}", random_folder_name, &url.folder);
-                let result = safe_save_image(screen_shot, &folder_name, &url.id)?;
-
-                results.push(result);
-            }
-
-            Ok(results)
-        }));
+        let future = task::spawn(take_screen_shot(browser, chunk, random_folder_name));
+        handles.push(future);
     }
 
     tracing::debug!("Threads started, length: {}", handles.len());
@@ -59,6 +44,28 @@ pub async fn capture_screen_shots(
         let result = handle?;
 
         results.extend(result?);
+    }
+
+    Ok(results)
+}
+
+async fn take_screen_shot(
+    browser: Arc<Browser>,
+    screen_shot_params: Vec<ScreenShotParams>,
+    random_folder_name: String,
+) -> Result<Vec<String>, Error> {
+    let mut results: Vec<String> = vec![];
+
+    let tab = browser
+        .new_tab()
+        .map_err(|e| anyhow::Error::msg(e.to_string()))?;
+
+    for url in screen_shot_params {
+        let screen_shot = get_screen_shot(&tab, &url.url);
+        let folder_name = format!("{}/{}", random_folder_name, &url.folder);
+        let result = safe_save_image(screen_shot, &folder_name, &url.id)?;
+
+        results.push(result);
     }
 
     Ok(results)

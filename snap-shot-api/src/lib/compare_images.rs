@@ -34,41 +34,11 @@ pub async fn compare_images(
     fs::create_dir_all(format!("{}/created", random_folder_name))?;
     fs::create_dir_all(format!("{}/diff", random_folder_name))?;
 
+    tracing::info!("Comparing images with {} threads", num_cpus::get());
     for chunk in path_pairs.chunks(path_pairs.len() / num_cpus::get() + 1) {
-        let chunk = chunk.to_vec();
+        let chunk: Vec<(String, String)> = chunk.to_vec();
         let random_folder_name = random_folder_name.clone(); // clone folder name for async block
-        handles.push(task::spawn(async move {
-            let mut created_images: Vec<String> = Vec::new();
-            let mut deleted_images: Vec<String> = Vec::new();
-            let mut diff_images: Vec<String> = Vec::new();
-
-            for (image_1_path, image_2_path) in chunk {
-                let is_image_created =
-                    image_2_path == IMAGE_NOT_FOUND && image_1_path != IMAGE_NOT_FOUND;
-                let is_image_deleted =
-                    image_2_path != IMAGE_NOT_FOUND && image_1_path == IMAGE_NOT_FOUND;
-
-                if !is_image_created && !is_image_deleted {
-                    match handle_compare_image(&image_1_path, &image_2_path, &random_folder_name)? {
-                        Some(image_path) => diff_images.push(image_path),
-                        None => (),
-                    }
-                } else if is_image_created {
-                    let created_image_path = handle_new_image(&image_1_path, &random_folder_name)?;
-                    created_images.push(created_image_path);
-                } else if is_image_deleted {
-                    let deleted_image_path =
-                        handle_deleted_image(&image_2_path, &random_folder_name)?;
-                    deleted_images.push(deleted_image_path);
-                }
-            }
-
-            Ok(CompareImagesReturn {
-                created_images_paths: created_images,
-                deleted_images_paths: deleted_images,
-                diff_images_paths: diff_images,
-            })
-        }));
+        handles.push(task::spawn(compare_image_chunk(chunk, random_folder_name)));
     }
 
     let mut result: CompareImagesReturn = CompareImagesReturn {
@@ -92,6 +62,39 @@ pub async fn compare_images(
         });
 
     Ok(result)
+}
+
+async fn compare_image_chunk(
+    chunk: Vec<(String, String)>,
+    random_folder_name: String,
+) -> Result<CompareImagesReturn, Error> {
+    let mut created_images: Vec<String> = Vec::new();
+    let mut deleted_images: Vec<String> = Vec::new();
+    let mut diff_images: Vec<String> = Vec::new();
+
+    for (image_1_path, image_2_path) in chunk {
+        let is_image_created = image_2_path == IMAGE_NOT_FOUND && image_1_path != IMAGE_NOT_FOUND;
+        let is_image_deleted = image_2_path != IMAGE_NOT_FOUND && image_1_path == IMAGE_NOT_FOUND;
+
+        if !is_image_created && !is_image_deleted {
+            match handle_compare_image(&image_1_path, &image_2_path, &random_folder_name)? {
+                Some(image_path) => diff_images.push(image_path),
+                None => (),
+            }
+        } else if is_image_created {
+            let created_image_path = handle_new_image(&image_1_path, &random_folder_name)?;
+            created_images.push(created_image_path);
+        } else if is_image_deleted {
+            let deleted_image_path = handle_deleted_image(&image_2_path, &random_folder_name)?;
+            deleted_images.push(deleted_image_path);
+        }
+    }
+
+    Ok(CompareImagesReturn {
+        created_images_paths: created_images,
+        deleted_images_paths: deleted_images,
+        diff_images_paths: diff_images,
+    })
 }
 
 fn get_matching_path_pairs(
@@ -123,7 +126,6 @@ fn handle_compare_image(
     let ratio = diff_img::calculate_diff_ratio(image_1.clone(), image_2.clone());
 
     if ratio < DIFF_RATIO_THRESHOLD {
-        tracing::info!("Images are identical: {}", image_1_path);
         return Ok(None);
     }
 
