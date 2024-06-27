@@ -74,7 +74,7 @@ mod tests {
     #[test]
     fn test_get_db_url() {
         let db_config = DBConfig::new();
-        let regex = Regex::new(r"^mysql://[^:]+:[^@]+@[^/]+/[^?]+$").unwrap();
+        let regex = Regex::new(r"^postgres://[^:]+:[^@]+@[^/]+/[^?]+$").unwrap();
         assert_eq!(regex.is_match(&db_config.get_db_url()), true);
     }
 }

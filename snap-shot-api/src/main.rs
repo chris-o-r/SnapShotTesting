@@ -1,6 +1,7 @@
 pub mod api;
 pub mod db;
 pub mod models;
+pub mod service;
 use api::routes::snap_shot::handle_snap_shot;
 use axum::{routing::post, Router};
 use models::app_state::AppState;

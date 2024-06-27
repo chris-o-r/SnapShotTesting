@@ -11,7 +11,7 @@ use crate::save_images;
 const DIFF_RATIO_THRESHOLD: f64 = 0.0001;
 const IMAGE_NOT_FOUND: &str = "not found";
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct CompareImagesReturn {
     pub created_images_paths: Vec<String>,
     pub deleted_images_paths: Vec<String>,
