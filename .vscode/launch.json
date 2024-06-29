@@ -1,45 +1,54 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug executable 'snap-shot-api'",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=snap-shot-api",
-                    "--package=snap-shot-api"
-                ],
-                "filter": {
-                    "name": "snap-shot-api",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'snap-shot-api'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=snap-shot-api",
-                    "--package=snap-shot-api"
-                ],
-                "filter": {
-                    "name": "snap-shot-api",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'snap-shot-api'",
+      "cargo": {
+        "args": ["build", "--bin=snap-shot-api", "--package=snap-shot-api"],
+        "filter": {
+          "name": "snap-shot-api",
+          "kind": "bin"
         }
-    ]
+      },
+      "args": [],
+      "cwd": "snap-shot-api/Cargo.toml"
+    },
+
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'snap-shot-api'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bin=snap-shot-api",
+          "--package=snap-shot-api"
+        ],
+        "filter": {
+          "name": "snap-shot-api",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    // Add the new debug configuration for the 'snap-shot-api' project
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug 'snap-shot-api' project",
+      "cargo": {
+        "args": ["build", "--package=snap-shot-api"],
+        "filter": {
+          "name": "snap-shot-api",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
 }

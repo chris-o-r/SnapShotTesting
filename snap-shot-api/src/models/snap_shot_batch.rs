@@ -1,12 +1,14 @@
+use chrono::NaiveDateTime;
 use lib::date_format;
 use sqlx::{postgres::PgRow, Row};
+use uuid::Uuid;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SnapShotBatch {
-    pub id: String,
+    pub id: Uuid,
     pub name: String,
     #[serde(with = "date_format")]
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: NaiveDateTime,
     pub new_story_book_version: String,
     pub old_story_book_version: String,
 }

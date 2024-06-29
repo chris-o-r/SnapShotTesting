@@ -2,8 +2,11 @@ pub mod api;
 pub mod db;
 pub mod models;
 pub mod service;
-use api::routes::snap_shot::handle_snap_shot;
-use axum::{routing::post, Router};
+use api::routes::{snap_shot::handle_snap_shot, snap_shot_history::handle_get_snap_shot_history};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use models::app_state::AppState;
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::{
@@ -31,6 +34,7 @@ fn create_routes(app_state: Arc<AppState>) -> Router {
     Router::new()
         .nest_service("/assets", ServeDir::new("assets"))
         .route("/snap-shot", post(handle_snap_shot))
+        .route("/snap-shot", get(handle_get_snap_shot_history))
         .with_state(app_state.clone())
 }
 

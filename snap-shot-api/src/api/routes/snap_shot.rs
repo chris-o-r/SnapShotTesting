@@ -1,13 +1,12 @@
 use anyhow::Error;
-use axum::body::Body;
-use axum::http::{Response, StatusCode};
-use axum::{extract, response::IntoResponse};
-use lib::compare_images::CompareImagesReturn;
-use serde::{Deserialize, Serialize};
+use axum::extract;
+use axum::http::StatusCode;
+use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::api::errors::AppError;
 use crate::models::app_state::AppState;
+use crate::models::snap_shot_response::SnapShotResponse;
 use crate::service::snap_shot_service;
 use axum::extract::State;
 
@@ -15,24 +14,6 @@ use axum::extract::State;
 pub struct SnapShotParams {
     new: Option<String>,
     old: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct SnapShotResponse {
-    pub id: String,
-    pub new_images_paths: Vec<String>,
-    pub old_images_paths: Vec<String>,
-    pub diff_images_paths: CompareImagesReturn,
-}
-
-impl IntoResponse for SnapShotResponse {
-    fn into_response(self) -> Response<Body> {
-        (
-            StatusCode::OK,
-            serde_json::to_string(&self).unwrap_or_default(),
-        )
-            .into_response()
-    }
 }
 
 pub async fn handle_snap_shot(

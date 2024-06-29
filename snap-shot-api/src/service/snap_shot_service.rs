@@ -1,15 +1,20 @@
 use anyhow::Error;
-use chrono::{DateTime, Utc};
+use chrono::{NaiveDateTime, Utc};
 use lib::{
     capture_screen_shots::capture_screen_shots,
     compare_images::{self, CompareImagesReturn},
     story_book::get_screen_shot_params_by_url,
 };
+use uuid::Uuid;
 
 use crate::{
-    api::routes::snap_shot::SnapShotResponse,
-    db::{snap_shot_batch_store, snap_shot_store},
-    models::{snap_shot::SnapShot, snap_shot_batch::SnapShotBatch},
+    db::{
+        snap_shot_batch_store,
+        snap_shot_store::{self, get_all_snap_shots_by_batch_id},
+    },
+    models::{
+        snap_shot::SnapShot, snap_shot_batch::SnapShotBatch, snap_shot_response::SnapShotResponse,
+    },
 };
 
 pub async fn create_snap_shots(
@@ -17,14 +22,27 @@ pub async fn create_snap_shots(
     old_url: &str,
     db_pool: sqlx::Pool<sqlx::Postgres>,
 ) -> Result<SnapShotResponse, Error> {
-    let id = uuid::Uuid::new_v4();
+    let mut transaction: sqlx::Transaction<'_, sqlx::Postgres> = db_pool.begin().await?;
+
+    let saved_batch = snap_shot_batch_store::insert_snap_shot_batch(
+        &mut transaction,
+        SnapShotBatch {
+            id: uuid::Uuid::new_v4(),
+            created_at: Utc::now().naive_utc(),
+            name: "snap-shot".to_string(),
+            new_story_book_version: new_url.to_string(),
+            old_story_book_version: old_url.to_string(),
+        },
+    )
+    .await?;
+
     let random_folder_name = format!(
         "{}-{}",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs(),
-        id
+        &saved_batch.id
     );
 
     let images_1: Vec<String> =
@@ -40,59 +58,30 @@ pub async fn create_snap_shots(
     )
     .await?;
 
-    save_results_to_db(
+    let snap_shots = create_snap_shot_array(
         diff_images.clone(),
         images_1.clone(),
         images_2.clone(),
-        id.to_string().as_str(),
-        new_url,
-        old_url,
-        db_pool,
-    )
-    .await?;
+        &saved_batch.id,
+    );
+
+    snap_shot_store::insert_snap_shots(&mut transaction, snap_shots).await?;
+
+    transaction.commit().await?;
 
     Ok(SnapShotResponse {
-        id: id.to_string(),
+        id: saved_batch.id.clone(),
         new_images_paths: images_1,
         old_images_paths: images_2,
         diff_images_paths: diff_images,
     })
 }
 
-async fn save_results_to_db(
-    diff_images: CompareImagesReturn,
-    new_images: Vec<String>,
-    old_images: Vec<String>,
-    batch_id: &str,
-    new_url: &str,
-    old_url: &str,
-    db_pool: sqlx::Pool<sqlx::Postgres>,
-) -> Result<(), Error> {
-    let snap_shots = create_snap_shot_array(diff_images, new_images, old_images, batch_id);
-
-    snap_shot_store::insert_snap_shots(&db_pool, snap_shots).await?;
-    tracing::info!("Snap shots saved to db {}", batch_id);
-
-    snap_shot_batch_store::save_snap_shot_batch(
-        &db_pool,
-        SnapShotBatch {
-            id: batch_id.to_string(),
-            created_at: Utc::now(),
-            name: "snap-shot".to_string(),
-            new_story_book_version: new_url.to_string(),
-            old_story_book_version: old_url.to_string(),
-        },
-    )
-    .await?;
-
-    Ok(())
-}
-
 fn create_snap_shot_array(
     diff_images: CompareImagesReturn,
     new_images: Vec<String>,
     old_images: Vec<String>,
-    batch_id: &str,
+    batch_id: &Uuid,
 ) -> Vec<SnapShot> {
     let mut snap_shots = Vec::new();
 
@@ -100,41 +89,51 @@ fn create_snap_shot_array(
         batch_id,
         diff_images.diff_images_paths,
         "diff",
-        Utc::now(),
+        Utc::now().naive_utc(),
     ));
 
     snap_shots.extend(paths_to_snap_shot(
         batch_id,
         diff_images.deleted_images_paths,
         "deleted",
-        Utc::now(),
+        Utc::now().naive_utc(),
     ));
 
     snap_shots.extend(paths_to_snap_shot(
         batch_id,
         diff_images.created_images_paths,
         "created",
-        Utc::now(),
+        Utc::now().naive_utc(),
     ));
 
-    snap_shots.extend(paths_to_snap_shot(batch_id, new_images, "new", Utc::now()));
+    snap_shots.extend(paths_to_snap_shot(
+        batch_id,
+        new_images,
+        "new",
+        Utc::now().naive_utc(),
+    ));
 
-    snap_shots.extend(paths_to_snap_shot(batch_id, old_images, "old", Utc::now()));
+    snap_shots.extend(paths_to_snap_shot(
+        batch_id,
+        old_images,
+        "old",
+        Utc::now().naive_utc(),
+    ));
 
     snap_shots
 }
 
 fn paths_to_snap_shot(
-    batch_id: &str,
+    batch_id: &Uuid,
     paths: Vec<String>,
     snap_shot_type: &str,
-    created_at: DateTime<Utc>,
+    created_at: NaiveDateTime,
 ) -> Vec<SnapShot> {
     paths
         .iter()
         .map(|path| SnapShot {
-            id: short_uuid::short!().to_string(),
-            batch_id: batch_id.to_string().clone(),
+            id: Uuid::new_v4(),
+            batch_id: batch_id.clone(),
             name: path.clone(),
             path: path.clone(),
             snap_shot_type: snap_shot_type.to_string(),
@@ -151,4 +150,40 @@ async fn handle_snap_shot_for_url(
     let image_params = get_screen_shot_params_by_url(url, param_name).await?;
 
     capture_screen_shots(image_params, random_folder_name).await
+}
+
+pub async fn get_snap_shot_history(
+    db_pool: sqlx::Pool<sqlx::Postgres>,
+) -> Result<Vec<SnapShotResponse>, Error> {
+    let mut result: Vec<SnapShotResponse> = Vec::new();
+    let snap_shot_batches = snap_shot_batch_store::get_all_snap_shot_batches(&db_pool).await?;
+
+    for batch in snap_shot_batches {
+        let snap_shots = get_all_snap_shots_by_batch_id(&db_pool, &batch.id).await?;
+        let mut new_images = Vec::new();
+        let mut old_images = Vec::new();
+        let mut diff_images = Vec::new();
+
+        for snap_shot in snap_shots {
+            match snap_shot.snap_shot_type.as_str() {
+                "new" => new_images.push(snap_shot.path.clone()),
+                "old" => old_images.push(snap_shot.path.clone()),
+                "diff" => diff_images.push(snap_shot.path.clone()),
+                _ => (),
+            }
+        }
+
+        result.push(SnapShotResponse {
+            id: batch.id.clone(),
+            new_images_paths: new_images,
+            old_images_paths: old_images,
+            diff_images_paths: CompareImagesReturn {
+                created_images_paths: Vec::new(),
+                deleted_images_paths: Vec::new(),
+                diff_images_paths: diff_images,
+            },
+        });
+    }
+
+    Ok(result)
 }

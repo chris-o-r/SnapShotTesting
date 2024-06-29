@@ -1,16 +1,17 @@
+use chrono::NaiveDateTime;
 use lib::date_format;
 use sqlx::{postgres::PgRow, Row};
+use uuid::Uuid;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-
 pub struct SnapShot {
-    pub id: String,
-    pub batch_id: String,
+    pub id: Uuid,
+    pub batch_id: Uuid,
     pub name: String,
     pub path: String,
     pub snap_shot_type: String,
     #[serde(with = "date_format")]
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: NaiveDateTime,
 }
 
 impl<'r> sqlx::FromRow<'r, PgRow> for SnapShot {
