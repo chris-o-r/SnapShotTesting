@@ -7,6 +7,10 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { ComparePages } from "./features/ComparePages/pages/ComparePages";
 import { Layout } from "antd";
+import CompareImagesHistoricalPage from "./features/CompareImagesHistorical/pages/CompareImagesHistoricalPage";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import CompareImagesHistoricalList from "./features/CompareImagesHistoricalList/pages/CompareImagesHistoricalList";
 
 export const QueryClient = new RQQueryClient({
   defaultOptions: {
@@ -16,7 +20,7 @@ export const QueryClient = new RQQueryClient({
   },
 });
 const persister = createSyncStoragePersister({
-  storage: window.localStorage,
+  storage: window.sessionStorage,
 });
 
 export default function App() {
@@ -26,15 +30,20 @@ export default function App() {
         client={QueryClient}
         persistOptions={{ persister }}
       >
+        <ToastContainer />
         <Layout style={{ minHeight: "100vh" }}>
           <Routes>
             <Route path="/">
               <Route index element={<StartPage />} />
               <Route path="/compare" element={<ComparePages />} />
-
-              {/* Using path="*"" means "match anything", so this route
-            acts like a catch-all for URLs that we don't have explicit
-            routes for. */}
+              <Route
+                path="/compare/historical"
+                element={<CompareImagesHistoricalList />}
+              />
+              <Route
+                path="/compare/historical/:historicalSnapShotId"
+                element={<CompareImagesHistoricalPage />}
+              />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>

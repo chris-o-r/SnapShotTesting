@@ -39,7 +39,7 @@ pub async fn insert_snap_shots(
 
     let snap_shot_types = snap_shots
         .iter()
-        .map(|s| s.snap_shot_type.clone())
+        .map(|s| s.snap_shot_type.to_string())
         .collect::<Vec<String>>();
 
     let created_ats = snap_shots

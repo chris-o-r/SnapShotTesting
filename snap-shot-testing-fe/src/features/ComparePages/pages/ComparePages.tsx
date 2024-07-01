@@ -1,14 +1,12 @@
-import { Layout, Menu, MenuProps, Spin } from "antd";
+import { Layout, Menu, MenuProps } from "antd";
 
 import { useState } from "react";
-import {
-  CompareStoryBookUrlsResponse,
-  useFetchCompareStoryBookUrls,
-} from "../../StartPage/api/compareStoryBookUrls";
+import { useFetchCompareStoryBookUrls } from "../../../api/compareStoryBookUrls.api";
 import { API_BASE_URL } from "../../../constants";
 import Sider from "antd/es/layout/Sider";
 import { Content, Header } from "antd/es/layout/layout";
-import getObjectEntries from "../../../utils/getObjectEntries";
+import { getMenuItems } from "../utils/getMenuItem";
+import Loader from "../../../components/Loader";
 
 export const ComparePages = () => {
   const [current, setCurrent] = useState<string | null>(null);
@@ -24,7 +22,6 @@ export const ComparePages = () => {
   });
 
   const onClick: MenuProps["onClick"] = (e) => {
-    console.log("click ", e);
     if (e.keyPath.length === 1) {
       setCurrent(e.key);
     } else {
@@ -32,84 +29,7 @@ export const ComparePages = () => {
     }
   };
 
-  const getMenuItems = (
-    data: CompareStoryBookUrlsResponse
-  ): MenuProps["items"] => {
-    const getTitle = (key: string) => {
-      if (key === "new_images_paths") {
-        return "New Images";
-      } else if (key === "old_images_paths") {
-        return "Old Images";
-      } else if (key === "diff_images_paths") {
-        return "Changed";
-      } else if (key === "created_images_paths") {
-        return "Created";
-      } else if (key === "deleted_images_paths") {
-        return "Deleted";
-      }
-    };
-
-    const getIsItemDiffImageObject = (
-      item: unknown
-    ): item is CompareStoryBookUrlsResponse["diff_images_paths"] => {
-      if (item === null || item === undefined) return false;
-
-      if (Array.isArray(item)) return false;
-
-      if (typeof item !== "object") return false;
-
-      if (
-        "diff_images_paths" in item &&
-        "created_images_paths" in item &&
-        "deleted_images_paths" in item
-      ) {
-        return true;
-      }
-
-      return false;
-    };
-
-    return getObjectEntries(data).map(([key, value]) => {
-      if (getIsItemDiffImageObject(value)) {
-        return {
-          key,
-          label: "Diff Images",
-          children: getObjectEntries(value).map(([key, value]) => {
-            return {
-              key: `${key}_diff`,
-              label: getTitle(key),
-              children: value.map((item) => {
-                return {
-                  key: item,
-                  label: item,
-                };
-              }),
-            };
-          }),
-        };
-      } else {
-        if (key === "id") return;
-        return {
-          key,
-          label: getTitle(key),
-          children: value.map((item) => {
-            return {
-              key: item,
-              label: item,
-            };
-          }),
-        };
-      }
-    });
-  };
-
-  if (rest.isPending)
-    return (
-      <div className="space-y-4 flex flex-col items-center h-[100vh] w-full justify-center">
-        <Spin />
-        <p className="text-black">Fetching please wait...</p>
-      </div>
-    );
+  if (rest.isPending) return <Loader text="Fetching please wait..." />;
 
   return (
     <>
@@ -137,7 +57,7 @@ export const ComparePages = () => {
               defaultSelectedKeys={["1"]}
               defaultOpenKeys={["diff_images_paths"]}
               mode="inline"
-              selectedKeys={[current ?? ""]}
+              selectedKeys={[current ?? "", currentImage ?? ""]}
               onClick={onClick}
             />
           </Sider>

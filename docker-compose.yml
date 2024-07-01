@@ -5,10 +5,22 @@ services:
     build:
       context: ./snap-shot-api
       dockerfile: Dockerfile
+
     ports:
-      - "8080:8080"
+      - "3307:3307"
     networks:
       - app-network
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      BASE_URL: 127.0.0.1
+      PORT: 3307
+      DB_NAME: mydatabase
+      DB_USER: myuser
+      DB_PASSWORD: mypassword
+      DB_HOST: 0.0.0.0
+      DB_PORT: 5432
 
   frontend:
     build:

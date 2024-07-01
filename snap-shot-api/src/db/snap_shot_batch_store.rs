@@ -1,11 +1,11 @@
 use sqlx::{Pool, Postgres};
 
-use crate::models::snap_shot_batch::SnapShotBatch;
+use crate::models::snap_shot_batch::SnapShotBatchDTO;
 
 pub async fn insert_snap_shot_batch(
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    snap_shot_batch: SnapShotBatch,
-) -> Result<SnapShotBatch, anyhow::Error> {
+    snap_shot_batch: SnapShotBatchDTO,
+) -> Result<SnapShotBatchDTO, anyhow::Error> {
     let sql = r"
     INSERT INTO snap_shots_batches (
             name,
@@ -17,7 +17,7 @@ pub async fn insert_snap_shot_batch(
     RETURNING *;
     ";
 
-    let res = sqlx::query_as::<_, SnapShotBatch>(sql)
+    let res = sqlx::query_as::<_, SnapShotBatchDTO>(sql)
         .bind(snap_shot_batch.name)
         .bind(snap_shot_batch.created_at)
         .bind(snap_shot_batch.new_story_book_version)
@@ -39,12 +39,12 @@ pub async fn insert_snap_shot_batch(
 
 pub async fn get_all_snap_shot_batches(
     pool: &Pool<Postgres>,
-) -> Result<Vec<SnapShotBatch>, anyhow::Error> {
+) -> Result<Vec<SnapShotBatchDTO>, anyhow::Error> {
     let sql = r"
     SELECT * FROM snap_shots_batches
     ";
 
-    let snap_shot_batches = sqlx::query_as::<_, SnapShotBatch>(sql)
+    let snap_shot_batches = sqlx::query_as::<_, SnapShotBatchDTO>(sql)
         .fetch_all(pool)
         .await
         .map_err(|err| {
