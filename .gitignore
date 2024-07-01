@@ -1,6 +1,6 @@
-snap-shot-api/target
-snap-shot-api/.env
-snap-shot-api/assets/
-snap-shot-api/assets/.DS_Store
+api/target
+api/.env
+api/assets/
+api/assets/.DS_Store
 
 .DS_Store
