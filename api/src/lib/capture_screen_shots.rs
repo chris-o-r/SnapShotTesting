@@ -1,7 +1,7 @@
 use anyhow::{Error, Ok};
 use futures_util::future::join_all;
-use headless_chrome::Tab;
 use headless_chrome::{protocol::cdp::Page::CaptureScreenshotFormatOption, Browser};
+use headless_chrome::{LaunchOptions, Tab};
 use std::sync::Arc;
 use tokio::task::{self};
 
@@ -20,11 +20,16 @@ pub async fn capture_screen_shots(
 ) -> Result<Vec<String>, Error> {
     let mut results: Vec<String> = vec![];
 
-    let browser = Arc::new(Browser::default().unwrap());
+    let browser = Arc::new(Browser::new(LaunchOptions {
+        headless: true,
+        enable_gpu: true,
+        enable_logging: false,
+        ..Default::default()
+    })?);
 
     let mut handles = vec![];
 
-    let mut max_threads = urls.len() / num_cpus::get();
+    let mut max_threads = urls.len() / std::thread::available_parallelism()?;
 
     if max_threads == 0 {
         max_threads = 1;
@@ -61,7 +66,7 @@ async fn take_screen_shot(
         .map_err(|e| anyhow::Error::msg(e.to_string()))?;
 
     for url in screen_shot_params {
-        let screen_shot = get_screen_shot(&tab, &url.url);
+        let screen_shot = get_screen_shot(&tab, &url.url)?;
         let folder_name = format!("{}/{}", random_folder_name, &url.folder);
         let result = safe_save_image(screen_shot, &folder_name, &url.id)?;
 
@@ -71,14 +76,11 @@ async fn take_screen_shot(
     Ok(results)
 }
 
-fn get_screen_shot(tab: &Arc<Tab>, url: &str) -> Vec<u8> {
+fn get_screen_shot(tab: &Arc<Tab>, url: &str) -> Result<Vec<u8>, Error> {
     tab.set_default_timeout(std::time::Duration::from_secs(60))
-        .navigate_to(url)
-        .unwrap()
-        .wait_until_navigated()
-        .unwrap()
+        .navigate_to(url)?
+        .wait_until_navigated()?
         .capture_screenshot(CaptureScreenshotFormatOption::Png, Some(75), None, true)
-        .unwrap()
 }
 
 #[cfg(test)]

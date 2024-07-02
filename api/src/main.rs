@@ -24,18 +24,15 @@ async fn main() {
         .with_max_level(tracing_subscriber::filter::LevelFilter::INFO)
         .init();
 
-    tokio::join!(serve(
-        create_routes(app_state.clone()),
-        app_state.env_variables.port.parse().unwrap()
-    ));
-}
+    let port = match app_state.env_variables.port.parse::<u16>() {
+        Ok(port) => port,
+        Err(_) => {
+            tracing::error!("Invalid port number. Exiting...");
+            std::process::exit(1);
+        }
+    };
 
-fn create_routes(app_state: Arc<AppState>) -> Router {
-    Router::new()
-        .nest_service("/assets", ServeDir::new("assets"))
-        .route("/snap-shot", post(handle_snap_shot))
-        .route("/snap-shot", get(handle_get_snap_shot_history))
-        .with_state(app_state.clone())
+    tokio::join!(serve(create_routes(app_state.clone()), port));
 }
 
 async fn serve(app: Router, port: u16) {
@@ -45,8 +42,15 @@ async fn serve(app: Router, port: u16) {
         .allow_headers(Any); // Allow any header
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    let listener = match tokio::net::TcpListener::bind(addr).await {
+        Ok(listener) => listener,
+        Err(e) => {
+            panic!("Failed to bind to port {}: {}", port, e);
+        }
+    };
+
     tracing::info!("Server Started on {}", listener.local_addr().unwrap());
+
     axum::serve(
         listener,
         app.layer(
@@ -58,4 +62,12 @@ async fn serve(app: Router, port: u16) {
     )
     .await
     .unwrap();
+}
+
+fn create_routes(app_state: Arc<AppState>) -> Router {
+    Router::new()
+        .nest_service("/assets", ServeDir::new("assets"))
+        .route("/snap-shot", post(handle_snap_shot))
+        .route("/snap-shot", get(handle_get_snap_shot_history))
+        .with_state(app_state.clone())
 }

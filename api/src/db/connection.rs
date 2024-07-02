@@ -1,8 +1,9 @@
 use sqlx::{postgres::PgPoolOptions, Postgres};
 
+const MAX_CONNECTIONS: u32 = 10;
 pub async fn create_connection_pool(url: &str) -> Result<sqlx::Pool<Postgres>, sqlx::Error> {
     match PgPoolOptions::new()
-        .max_connections(1)
+        .max_connections(MAX_CONNECTIONS)
         .connect(url)
         .await
         .map_err(|err| {

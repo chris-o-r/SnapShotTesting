@@ -33,9 +33,13 @@ pub async fn compare_images(
     fs::create_dir_all(format!("{}/deleted", random_folder_name))?;
     fs::create_dir_all(format!("{}/created", random_folder_name))?;
     fs::create_dir_all(format!("{}/diff", random_folder_name))?;
-
-    tracing::info!("Comparing images with {} threads", num_cpus::get());
-    for chunk in path_pairs.chunks(path_pairs.len() / num_cpus::get() + 1) {
+    tracing::info!(
+        "Comparing images with {} threads",
+        std::thread::available_parallelism().unwrap()
+    );
+    for chunk in
+        path_pairs.chunks(path_pairs.len() / std::thread::available_parallelism().unwrap() + 1)
+    {
         let chunk: Vec<(String, String)> = chunk.to_vec();
         let random_folder_name = random_folder_name.clone(); // clone folder name for async block
         handles.push(task::spawn(compare_image_chunk(chunk, random_folder_name)));

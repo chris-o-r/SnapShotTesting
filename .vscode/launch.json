@@ -4,38 +4,33 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug executable 'snap-shot-api'",
+      "name": "Debug executable 'api'",
       "cargo": {
-        "args": ["build", "--bin=snap-shot-api", "--package=snap-shot-api"],
+        "args": ["build", "--bin=api", "--package=api"],
         "filter": {
-          "name": "snap-shot-api",
+          "name": "api",
           "kind": "bin"
         }
       },
       "args": [],
-      "cwd": "snap-shot-api/Cargo.toml"
+      "cwd": "api/Cargo.toml"
     },
 
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug unit tests in executable 'snap-shot-api'",
+      "name": "Debug unit tests in executable 'api'",
       "cargo": {
-        "args": [
-          "test",
-          "--no-run",
-          "--bin=snap-shot-api",
-          "--package=snap-shot-api"
-        ],
+        "args": ["test", "--no-run", "--bin=api", "--package=api"],
         "filter": {
-          "name": "snap-shot-api",
+          "name": "api",
           "kind": "bin"
         }
       },
       "args": [],
       "cwd": "${workspaceFolder}"
     },
-    // Add the new debug configuration for the 'snap-shot-api' project
+    // Add the new debug configuration for the 'api' project
     {
       "type": "lldb",
       "request": "launch",

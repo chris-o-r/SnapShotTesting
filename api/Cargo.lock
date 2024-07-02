@@ -2799,15 +2799,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "short-uuid"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4257805fdeb4183434213216a1ffe4524e2d3863084d1d2af9f9df51cc409105"
-dependencies = [
- "uuid",
-]
-
-[[package]]
 name = "signal-hook-registry"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2867,14 +2858,12 @@ dependencies = [
  "futures-util",
  "headless_chrome",
  "image",
- "num_cpus",
  "regex",
  "reqwest",
  "serde",
  "serde_as",
  "serde_json",
  "serde_with",
- "short-uuid",
  "sqlx",
  "tokio",
  "tower",

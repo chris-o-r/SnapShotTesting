@@ -1,9 +1,9 @@
 version: "3.8"
 
 services:
-  snap-shot-api:
+  api:
     build:
-      context: ./snap-shot-api
+      context: ./api
       dockerfile: Dockerfile
 
     ports:
@@ -19,17 +19,21 @@ services:
       DB_NAME: mydatabase
       DB_USER: myuser
       DB_PASSWORD: mypassword
-      DB_HOST: 0.0.0.0
+      DB_HOST: postgres
       DB_PORT: 5432
+    depends_on:
+      - postgres
 
   frontend:
     build:
-      context: ./snap-shot-testing-fe
+      context: ./fe
       dockerfile: Dockerfile
     ports:
       - "3000:80"
     networks:
       - app-network
+    depends_on:
+      - api
   postgres:
     image: postgres:14-alpine
     ports:
@@ -40,7 +44,10 @@ services:
       POSTGRES_PASSWORD: mypassword
     volumes:
       - ../postrgress/pgdata:/var/lib/postgresql/data
+    networks:
+      - app-network
 
 networks:
   app-network:
     driver: bridge
+    internal: true
