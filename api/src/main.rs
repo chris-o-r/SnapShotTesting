@@ -2,7 +2,10 @@ pub mod api;
 pub mod db;
 pub mod models;
 pub mod service;
-use api::routes::{snap_shot::handle_snap_shot, snap_shot_history::handle_get_snap_shot_history};
+use api::routes::{
+    handle_get_snap_shot_by_id::handle_get_snap_shot_by_id, snap_shot::handle_snap_shot,
+    snap_shot_history::handle_get_snap_shot_history,
+};
 use axum::{
     routing::{get, post},
     Router,
@@ -69,5 +72,6 @@ fn create_routes(app_state: Arc<AppState>) -> Router {
         .nest_service("/assets", ServeDir::new("assets"))
         .route("/snap-shot", post(handle_snap_shot))
         .route("/snap-shot", get(handle_get_snap_shot_history))
+        .route("/snap-shot/:id", get(handle_get_snap_shot_by_id))
         .with_state(app_state.clone())
 }

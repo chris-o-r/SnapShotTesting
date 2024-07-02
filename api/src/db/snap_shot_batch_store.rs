@@ -54,3 +54,24 @@ pub async fn get_all_snap_shot_batches(
 
     Ok(snap_shot_batches)
 }
+
+pub async fn get_snap_batch_by_id(
+    pool: &Pool<Postgres>,
+    id: &uuid::Uuid,
+) -> Result<Option<SnapShotBatchDTO>, anyhow::Error> {
+    let sql = r"
+    SELECT * FROM snap_shots_batches
+    WHERE id = $1
+    ";
+
+    let snap_shot_batch = sqlx::query_as::<_, SnapShotBatchDTO>(sql)
+        .bind(id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|err| {
+            tracing::error!("Cannot get snap shot batch [{}]", err.to_string());
+            anyhow::Error::from(err)
+        })?;
+
+    Ok(snap_shot_batch)
+}

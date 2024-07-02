@@ -1,5 +1,4 @@
 import { Layout, Menu, MenuProps } from "antd";
-import { useFetchSnapShotHistory } from "@/api/snapShotHistory.api";
 import { Content, Header } from "antd/es/layout/layout";
 import Sider from "antd/es/layout/Sider";
 import { useParams } from "react-router-dom";
@@ -7,18 +6,19 @@ import { useState } from "react";
 import { API_BASE_URL } from "@/constants";
 import { getMenuItemsHistoricalPage } from "../utils/getMenuItemsHistoricalPage";
 import Loader from "@/components/Loader";
+import React from "react";
+import { useFetchSnapShotHistoryItem } from "@/api/fetchSnapShotHistoryItem.api";
 
 export default function CompareImagesHistoricalPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [current, setCurrent] = useState<string | null>(null);
 
-  const { data: historicalSnapShotData, isLoading } = useFetchSnapShotHistory();
-  let { historicalSnapShotId } = useParams();
-  console.log(historicalSnapShotData);
+  const { historicalSnapShotId } = useParams();
 
-  const currentHistoricalSnapShot = historicalSnapShotData?.find(
-    (item) => item.id === historicalSnapShotId
-  );
+  const { data: historicalSnapShotData, isLoading } =
+    useFetchSnapShotHistoryItem(historicalSnapShotId ?? "");
+
+  console.log(historicalSnapShotData);
 
   const onClick: MenuProps["onClick"] = (e) => {
     if (e.keyPath.length === 1) {
@@ -35,8 +35,8 @@ export default function CompareImagesHistoricalPage() {
     <>
       <Header style={{ display: "flex", color: "white", alignItems: "center" }}>
         <h1 className="text-2xl">
-          Comparing {currentHistoricalSnapShot?.old_story_book_version} with{" "}
-          {currentHistoricalSnapShot?.new_story_book_version}
+          Comparing {historicalSnapShotData?.old_story_book_version} with{" "}
+          {historicalSnapShotData?.new_story_book_version}
         </h1>
       </Header>
       <Content>
@@ -51,10 +51,10 @@ export default function CompareImagesHistoricalPage() {
               overflowY: "auto",
             }}
           >
-            {currentHistoricalSnapShot && (
+            {historicalSnapShotData && (
               <Menu
                 theme="dark"
-                items={getMenuItemsHistoricalPage(currentHistoricalSnapShot)}
+                items={getMenuItemsHistoricalPage(historicalSnapShotData)}
                 style={{ height: "100%" }}
                 defaultSelectedKeys={["1"]}
                 defaultOpenKeys={["diff_images_paths"]}
