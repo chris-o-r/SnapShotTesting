@@ -5,11 +5,8 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-
     ports:
       - "3307:3307"
-    networks:
-      - app-network
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -23,17 +20,25 @@ services:
       DB_PORT: 5432
     depends_on:
       - postgres
-
   frontend:
     build:
       context: ./fe
       dockerfile: Dockerfile
     ports:
       - "3000:80"
-    networks:
-      - app-network
     depends_on:
       - api
+    environment:
+      VITE_API_BASE_URL: http://api:3307
+  # redis:
+  #   image: redis
+  #   container_name: redis-snap-shot
+  #   ports:
+  #     - "127.0.0.1:6377:6377"
+  #   volumes:
+  #     - ../redis-data:/data
+  #     - ./redis.conf:/usr/local/etc/redis/redis.conf
+  #   command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
   postgres:
     image: postgres:14-alpine
     ports:
@@ -44,10 +49,14 @@ services:
       POSTGRES_PASSWORD: mypassword
     volumes:
       - ../postrgress/pgdata:/var/lib/postgresql/data
-    networks:
-      - app-network
-
-networks:
-  app-network:
-    driver: bridge
-    internal: true
+  selenium:
+    image: selenium/standalone-chrome:latest  # Using the specified image
+    shm_size: "4g"  # Shared memory size
+    dns:
+      - 8.8.8.8  # DNS settings
+    ports:
+      - "4444:4444"  # Port mapping
+      - "7900:7900"  # Port mapping
+    environment:
+      - SE_NODE_MAX_SESSIONS=20
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true

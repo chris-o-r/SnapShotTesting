@@ -3,8 +3,8 @@ pub mod db;
 pub mod models;
 pub mod service;
 use api::routes::{
-    handle_get_snap_shot_by_id::handle_get_snap_shot_by_id, snap_shot::handle_snap_shot,
-    snap_shot_history::handle_get_snap_shot_history,
+    handle_get_job_by_id, handle_get_snap_shot_by_id::handle_get_snap_shot_by_id,
+    snap_shot::handle_snap_shot, snap_shot_history::handle_get_snap_shot_history,
 };
 use axum::{
     routing::{get, post},
@@ -73,5 +73,10 @@ fn create_routes(app_state: Arc<AppState>) -> Router {
         .route("/snap-shot", post(handle_snap_shot))
         .route("/snap-shot", get(handle_get_snap_shot_history))
         .route("/snap-shot/:id", get(handle_get_snap_shot_by_id))
+        .route("/jobs/:id", get(handle_get_job_by_id::handle_get_job_by_id))
+        .route(
+            "/jobs",
+            get(api::routes::handle_get_all_running_jobs::handle_get_all_running_jobs),
+        )
         .with_state(app_state.clone())
 }

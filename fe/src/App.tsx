@@ -5,12 +5,12 @@ import { ErrorBoundary } from "./features/ErrorBoundary";
 import { QueryClient as RQQueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
-import { ComparePages } from "./features/ComparePages/pages/ComparePages";
 import { Layout } from "antd";
 import CompareImagesHistoricalPage from "./features/CompareImagesHistorical/pages/CompareImagesHistoricalPage";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import CompareImagesHistoricalList from "./features/CompareImagesHistoricalList/pages/CompareImagesHistoricalList";
+import Jobs from "./features/Jobs/Pages/Jobs";
 
 export const QueryClient = new RQQueryClient({
   defaultOptions: {
@@ -35,7 +35,7 @@ export default function App() {
           <Routes>
             <Route path="/">
               <Route index element={<StartPage />} />
-              <Route path="/compare" element={<ComparePages />} />
+              <Route path="/jobs" element={<Jobs />} />
               <Route
                 path="/compare/historical"
                 element={<CompareImagesHistoricalList />}

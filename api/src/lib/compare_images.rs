@@ -1,6 +1,6 @@
 use crate::diff_img;
 use anyhow::Error;
-use futures_util::future::join_all;
+use futures_util::{future::join_all, stream::FuturesUnordered};
 use image;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -23,7 +23,7 @@ pub async fn compare_images(
     image_paths_2: Vec<String>,
     random_folder_name: &str,
 ) -> Result<CompareImagesReturn, Error> {
-    let mut handles: Vec<task::JoinHandle<Result<CompareImagesReturn, Error>>> = Vec::new();
+    let handles = FuturesUnordered::new();
 
     let path_pairs = get_matching_path_pairs(image_paths_1, image_paths_2);
 
@@ -33,13 +33,8 @@ pub async fn compare_images(
     fs::create_dir_all(format!("{}/deleted", random_folder_name))?;
     fs::create_dir_all(format!("{}/created", random_folder_name))?;
     fs::create_dir_all(format!("{}/diff", random_folder_name))?;
-    tracing::info!(
-        "Comparing images with {} threads",
-        std::thread::available_parallelism().unwrap()
-    );
-    for chunk in
-        path_pairs.chunks(path_pairs.len() / std::thread::available_parallelism().unwrap() + 1)
-    {
+
+    for chunk in path_pairs.chunks(4) {
         let chunk: Vec<(String, String)> = chunk.to_vec();
         let random_folder_name = random_folder_name.clone(); // clone folder name for async block
         handles.push(task::spawn(compare_image_chunk(chunk, random_folder_name)));

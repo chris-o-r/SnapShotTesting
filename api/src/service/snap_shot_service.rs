@@ -1,7 +1,8 @@
-use anyhow::{Error, Ok};
+use anyhow::Error;
 use chrono::{NaiveDateTime, Utc};
+use futures_util::FutureExt;
 use lib::{
-    capture_screen_shots::capture_screen_shots,
+    capture_screenshots_v2,
     compare_images::{self, CompareImagesReturn},
     story_book::get_screen_shot_params_by_url,
 };
@@ -9,74 +10,121 @@ use uuid::Uuid;
 
 use crate::{
     db::{
-        snap_shot_batch_store,
-        snap_shot_store::{self, get_all_snap_shots_by_batch_id},
+        snap_shot_batch_job_store, snap_shot_batch_store,
+        snap_shot_store::{self},
     },
     models::{
         snap_shot::{SnapShot, SnapShotType},
-        snap_shot_batch::{self, SnapShotBatch, SnapShotBatchDTO},
-        snap_shot_response::SnapShotResponse,
+        snap_shot_batch::SnapShotBatchDTO,
+        snap_shot_batch_job::{SnapShotBatchJob, SnapShotBatchJobStatus},
     },
+    service::snap_shot_job_service,
 };
 
 pub async fn create_snap_shots(
     new_url: &str,
     old_url: &str,
     db_pool: sqlx::Pool<sqlx::Postgres>,
-) -> Result<SnapShotResponse, Error> {
-    let mut transaction: sqlx::Transaction<'_, sqlx::Postgres> = db_pool.begin().await?;
+    redis_pool: bb8_redis::bb8::Pool<bb8_redis::RedisConnectionManager>,
+) -> Result<SnapShotBatchJob, Error> {
+    let mut job: SnapShotBatchJob = create_batch_job(&redis_pool).await?;
 
-    let saved_batch = snap_shot_batch_store::insert_snap_shot_batch(
-        &mut transaction,
-        SnapShotBatchDTO {
-            id: uuid::Uuid::new_v4(),
-            created_at: Utc::now().naive_utc(),
-            name: format!("{}-{}", new_url, old_url),
-            new_story_book_version: new_url.to_string(),
-            old_story_book_version: old_url.to_string(),
-        },
-    )
-    .await?;
+    let new_url = new_url.to_string();
+    let old_url = old_url.to_string();
+    let redis_pool_clone = redis_pool.clone(); // Clone the redis_pool
 
-    let random_folder_name = format!(
-        "{}-{}",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
-        &saved_batch.id
-    );
+    let _ = tokio::spawn(async move {
+        let mut transaction: sqlx::Transaction<'_, sqlx::Postgres> = db_pool.begin().await?;
 
-    let images_1: Vec<String> =
-        handle_snap_shot_for_url(&new_url, &random_folder_name.as_str(), "new").await?;
+        let batch = snap_shot_batch_store::insert_snap_shot_batch(
+            &mut transaction,
+            SnapShotBatchDTO {
+                id: job.id.clone(),
+                created_at: Utc::now().naive_utc(),
+                name: format!("{}-{}", new_url, old_url),
+                new_story_book_version: new_url.clone().to_string(),
+                old_story_book_version: old_url.clone().to_string(),
+            },
+        )
+        .await?;
 
-    let images_2: Vec<String> =
-        handle_snap_shot_for_url(&old_url, random_folder_name.as_str(), "old").await?;
+        job.snap_shot_batch_id = Some(batch.id.clone());
+        job.updated_at = Utc::now().naive_utc();
+        job.progress = 0.1;
+        snap_shot_batch_job_store::insert_snap_shot_batch_job(&redis_pool, job.clone()).await?;
 
-    let diff_images = compare_images::compare_images(
-        images_1.clone(),
-        images_2.clone(),
-        random_folder_name.as_str(),
-    )
-    .await?;
+        let random_folder_name = format!(
+            "{}-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+            &job.id,
+        );
 
-    let snap_shots = create_snap_shot_array(
-        diff_images.clone(),
-        images_1.clone(),
-        images_2.clone(),
-        &saved_batch.id,
-    );
+        let images_1: Vec<String> =
+            handle_snap_shot_for_url(&new_url, &random_folder_name.as_str(), "new").await?;
 
-    snap_shot_store::insert_snap_shots(&mut transaction, snap_shots).await?;
+        job.updated_at = Utc::now().naive_utc();
+        job.progress = 0.4;
+        snap_shot_batch_job_store::insert_snap_shot_batch_job(&redis_pool, job.clone()).await?;
 
-    transaction.commit().await?;
+        let images_2: Vec<String> =
+            handle_snap_shot_for_url(&old_url, random_folder_name.as_str(), "old").await?;
 
-    Ok(SnapShotResponse {
-        id: saved_batch.id.clone(),
-        new_images_paths: images_1,
-        old_images_paths: images_2,
-        diff_images_paths: diff_images,
+        job.updated_at = Utc::now().naive_utc();
+        job.progress = 0.7;
+
+        snap_shot_batch_job_store::insert_snap_shot_batch_job(&redis_pool, job.clone()).await?;
+
+        let diff_images = compare_images::compare_images(
+            images_1.clone(),
+            images_2.clone(),
+            random_folder_name.as_str(),
+        )
+        .await?;
+
+        let snap_shots = create_snap_shot_array(
+            diff_images.clone(),
+            images_1.clone(),
+            images_2.clone(),
+            &job.id,
+        );
+
+        snap_shot_store::insert_snap_shots(&mut transaction, snap_shots).await?;
+
+        transaction.commit().await?;
+
+        job.status = SnapShotBatchJobStatus::Completed;
+        job.progress = 1.0;
+        job.updated_at = Utc::now().naive_utc();
+        snap_shot_batch_job_store::insert_snap_shot_batch_job(&redis_pool, job.clone()).await?;
+
+        Ok(())
     })
+    .then(
+        |res: Result<Result<(), Error>, tokio::task::JoinError>| async move {
+            match res {
+                Ok(Ok(())) => (),
+                Ok(Err(err)) => {
+                    snap_shot_job_service::update_job_status(
+                        &redis_pool_clone, // Use the cloned redis_pool
+                        job.id,
+                        SnapShotBatchJobStatus::Failed,
+                    )
+                    .await
+                    .unwrap();
+                    tracing::error!("Error: {}", &err);
+                    return Err(err);
+                }
+                Err(_e) => (),
+            };
+
+            return Ok(());
+        },
+    );
+
+    Ok(job.clone())
 }
 
 fn create_snap_shot_array(
@@ -149,82 +197,37 @@ async fn handle_snap_shot_for_url(
     random_folder_name: &str,
     param_name: &str,
 ) -> Result<Vec<String>, Error> {
+    tracing::info!("Capturing screen shots for url: {}", url);
+
     let image_params = get_screen_shot_params_by_url(url, param_name).await?;
 
-    capture_screen_shots(image_params, random_folder_name).await
+    let results =
+        capture_screenshots_v2::capture_screenshots(&image_params, random_folder_name).await?;
+
+    tracing::info!(
+        "Captured {}/{} for url {}",
+        results.len(),
+        image_params.len(),
+        url
+    );
+
+    Ok(results)
 }
 
-pub async fn get_snap_shot_history(
-    db_pool: sqlx::Pool<sqlx::Postgres>,
-) -> Result<Vec<SnapShotBatch>, Error> {
-    let mut result: Vec<SnapShotBatch> = Vec::new();
-    let snap_shot_batches = snap_shot_batch_store::get_all_snap_shot_batches(&db_pool).await?;
-
-    for batch in snap_shot_batches {
-        let snap_shots = get_all_snap_shots_by_batch_id(&db_pool, &batch.id).await?;
-
-        let snap_shot_batch = create_snap_shot_batch_from_dto(batch, snap_shots);
-
-        result.push(snap_shot_batch);
-    }
-    Ok(result)
-}
-
-pub async fn get_snap_shot_batch_by_id(
-    id: Uuid,
-    db_pool: sqlx::Pool<sqlx::Postgres>,
-) -> Result<Option<SnapShotBatch>, Error> {
-    let batch_dto = match snap_shot_batch_store::get_snap_batch_by_id(&db_pool, &id).await? {
-        Some(batch) => batch,
-        None => return Ok(None),
+async fn create_batch_job(
+    redis_pool: &bb8_redis::bb8::Pool<bb8_redis::RedisConnectionManager>,
+) -> Result<SnapShotBatchJob, Error> {
+    let snap_shot_batch_job = SnapShotBatchJob {
+        id: Uuid::new_v4(),
+        snap_shot_batch_id: None,
+        progress: 0.0,
+        status: SnapShotBatchJobStatus::Pending,
+        created_at: Utc::now().naive_utc(),
+        updated_at: Utc::now().naive_utc(),
     };
 
-    let snap_shots = get_all_snap_shots_by_batch_id(&db_pool, &batch_dto.id).await?;
+    snap_shot_batch_job_store::insert_snap_shot_batch_job(redis_pool, snap_shot_batch_job.clone())
+        .await?;
 
-    Ok(Some(create_snap_shot_batch_from_dto(batch_dto, snap_shots)))
-}
-
-fn create_snap_shot_batch_from_dto(
-    snap_shot_batch_dto: SnapShotBatchDTO,
-    snap_shots: Vec<SnapShot>,
-) -> SnapShotBatch {
-    let mut snap_shot_batch = SnapShotBatch {
-        id: snap_shot_batch_dto.id,
-        name: snap_shot_batch_dto.name,
-        created_at: snap_shot_batch_dto.created_at,
-        new_story_book_version: snap_shot_batch_dto.new_story_book_version,
-        old_story_book_version: snap_shot_batch_dto.old_story_book_version,
-        diff_images_paths: CompareImagesReturn {
-            diff_images_paths: Vec::new(),
-            created_images_paths: Vec::new(),
-            deleted_images_paths: Vec::new(),
-        },
-        new_images_paths: Vec::new(),
-        old_images_paths: Vec::new(),
-    };
-
-    for snap_shot in snap_shots {
-        match snap_shot.snap_shot_type {
-            SnapShotType::New => snap_shot_batch
-                .new_images_paths
-                .push(snap_shot.path.clone()),
-            SnapShotType::Old => snap_shot_batch
-                .old_images_paths
-                .push(snap_shot.path.clone()),
-            SnapShotType::Diff => snap_shot_batch
-                .diff_images_paths
-                .diff_images_paths
-                .push(snap_shot.path.clone()),
-            SnapShotType::Create => snap_shot_batch
-                .diff_images_paths
-                .created_images_paths
-                .push(snap_shot.path.clone()),
-            SnapShotType::Deleted => snap_shot_batch
-                .diff_images_paths
-                .deleted_images_paths
-                .push(snap_shot.path.clone()),
-        }
-    }
-
-    snap_shot_batch
+    Ok(snap_shot_batch_job)
 }

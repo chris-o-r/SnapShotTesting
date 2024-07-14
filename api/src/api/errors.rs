@@ -8,6 +8,8 @@ pub struct AppError(pub anyhow::Error, pub StatusCode);
 // Tell axum how to convert `AppError` into a response.
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
+        // Log the error.
+        tracing::error!("{}", self.0);
         (self.1, format!("Internal Server Error: {}", self.0)).into_response()
     }
 }

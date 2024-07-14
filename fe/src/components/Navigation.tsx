@@ -1,4 +1,8 @@
-import { HistoryOutlined, HomeOutlined } from "@ant-design/icons";
+import {
+  DeliveredProcedureOutlined,
+  HistoryOutlined,
+  HomeOutlined,
+} from "@ant-design/icons";
 import { Menu } from "antd";
 import { MenuItemType } from "antd/es/menu/interface";
 import { useMemo } from "react";
@@ -22,6 +26,13 @@ export default function Navigation() {
       href: "/compare/historical",
       icon: <HistoryOutlined />,
       onClick: () => navigate("/compare/historical"),
+    },
+    {
+      label: "Jobs",
+      key: "3",
+      href: "/jobs",
+      icon: <DeliveredProcedureOutlined />,
+      onClick: () => navigate("/jobs"),
     },
   ];
   const pathName = window.location.pathname;

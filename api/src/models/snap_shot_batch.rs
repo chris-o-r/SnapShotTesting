@@ -11,7 +11,6 @@ pub struct SnapShotBatch {
     pub created_at: NaiveDateTime,
     pub new_story_book_version: String,
     pub old_story_book_version: String,
-
     pub diff_images_paths: CompareImagesReturn,
     pub new_images_paths: Vec<String>,
     pub old_images_paths: Vec<String>,
@@ -23,7 +22,6 @@ pub struct SnapShotBatchDTO {
     pub name: String,
     #[serde(with = "date_format")]
     pub created_at: NaiveDateTime,
-
     pub new_story_book_version: String,
     pub old_story_book_version: String,
 }

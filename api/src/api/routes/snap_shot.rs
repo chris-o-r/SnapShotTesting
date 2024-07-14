@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use crate::api::errors::AppError;
 use crate::models::app_state::AppState;
-use crate::models::snap_shot_response::SnapShotResponse;
+use crate::models::snap_shot_batch_job::SnapShotBatchJob;
 use crate::service::snap_shot_service;
 use axum::extract::State;
 
@@ -19,7 +19,7 @@ pub struct SnapShotParams {
 pub async fn handle_snap_shot(
     State(state): State<Arc<AppState>>,
     extract::Json(payload): extract::Json<SnapShotParams>,
-) -> Result<SnapShotResponse, AppError> {
+) -> Result<SnapShotBatchJob, AppError> {
     let new = match payload.new {
         Some(new) => new,
         None => {
@@ -39,7 +39,12 @@ pub async fn handle_snap_shot(
         }
     };
 
-    snap_shot_service::create_snap_shots(new.as_str(), old.as_str(), state.db_pool.clone())
-        .await
-        .map_err(|e| AppError(e, StatusCode::INTERNAL_SERVER_ERROR))
+    snap_shot_service::create_snap_shots(
+        new.as_str(),
+        old.as_str(),
+        state.db_pool.clone(),
+        state.redis_pool.clone(),
+    )
+    .await
+    .map_err(|e| AppError(e, StatusCode::INTERNAL_SERVER_ERROR))
 }

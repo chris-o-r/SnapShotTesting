@@ -7,6 +7,7 @@ pub struct DBConfig {
     pub name: String,
     pub user: String,
     pub password: String,
+    pub redis_url: String,
 }
 
 impl DBConfig {
@@ -38,12 +39,18 @@ impl DBConfig {
             Err(_) => panic!("DB_PASSWORD must be set"),
         };
 
+        let redis_url = match env::var("REDIS_URL") {
+            Ok(val) => val,
+            Err(_) => panic!("REDIS_URL must be set"),
+        };
+
         Self {
             host,
             port,
             name,
             user,
             password,
+            redis_url,
         }
     }
 

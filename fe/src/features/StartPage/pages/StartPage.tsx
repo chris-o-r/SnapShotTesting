@@ -1,9 +1,6 @@
 import { Button, Form, Input, Layout } from "antd";
 import { useForm, SubmitHandler, Controller } from "react-hook-form";
-import {
-  CompareStoryBookUrlsRequest,
-  useMutateCompareStoryBookUrls,
-} from "@/api/compareStoryBookUrls.api";
+import { useMutateCompareStoryBookUrls } from "@/api/compareStoryBookUrls.api";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Content, Header } from "antd/es/layout/layout";
@@ -13,6 +10,7 @@ import { QUERY_KEYS } from "@/api/constants";
 import { toast } from "react-toastify";
 import Navigation from "@/components/Navigation";
 import Loader from "@/components/Loader";
+// import { useFetchRunningJobs } from "@/api/jobs.api";
 
 type StartPageForm = {
   oldStoryBookUrl: string;
@@ -24,6 +22,7 @@ export const StartPage = () => {
     mode: "onChange",
   });
   const navigate = useNavigate();
+  // useFetchRunningJobs();
 
   const mutate = useMutateCompareStoryBookUrls();
 
@@ -35,17 +34,7 @@ export const StartPage = () => {
   });
 
   useEffect(() => {
-    if (mutate.isSuccess) {
-      const request: CompareStoryBookUrlsRequest = {
-        new: getValues("newStoryBookUrl"),
-        old: getValues("oldStoryBookUrl"),
-      };
-
-      const urlParams = new URLSearchParams(request).toString();
-      navigate(`/compare?${urlParams.toString()}`);
-    } else if (mutate.isError) {
-      toast.error("Error while fetching data");
-    }
+    if (mutate.isError) toast.error("Error while fetching data");
   }, [getValues, mutate.isSuccess, mutate.isError, navigate]);
 
   const onSubmit: SubmitHandler<StartPageForm> = (data) => {
@@ -96,7 +85,7 @@ export const StartPage = () => {
               e.preventDefault();
               handleSubmit(onSubmit);
             }}
-            autoComplete="off"
+            autoComplete="on"
           >
             <Form.Item<StartPageForm>
               label="Old Story Book URL"

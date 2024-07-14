@@ -9,22 +9,14 @@ import axios, { AxiosResponse } from "axios";
 import { API_BASE_URL } from "../constants";
 import { QueryClient } from "../App";
 import { QUERY_KEYS } from "./constants";
+import { Job } from "@/types/job";
 
 export type CompareStoryBookUrlsRequest = {
   new: string;
   old: string;
 };
 
-export type CompareStoryBookUrlsResponse = {
-  new_images_paths: string[];
-  id: string;
-  old_images_paths: string[];
-  diff_images_paths: {
-    diff_images_paths: string[];
-    created_images_paths: string[];
-    deleted_images_paths: string[];
-  };
-};
+export type CompareStoryBookUrlsResponse = Job;
 
 export const useFetchCompareStoryBookUrls = (
   params: CompareStoryBookUrlsRequest,

@@ -70,8 +70,6 @@ pub async fn get_all_snap_shots_by_batch_id(
     let sql = r"
     SELECT * FROM snap_shots where batch_id = $1";
 
-    tracing::info!("Getting snap shots for batch_id {}", batch_id);
-
     let snap_shots = sqlx::query_as::<_, SnapShot>(sql)
         .bind(batch_id)
         .fetch_all(pool)

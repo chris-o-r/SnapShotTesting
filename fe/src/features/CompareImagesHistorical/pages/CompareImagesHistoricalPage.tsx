@@ -6,7 +6,6 @@ import { useState } from "react";
 import { API_BASE_URL } from "@/constants";
 import { getMenuItemsHistoricalPage } from "../utils/getMenuItemsHistoricalPage";
 import Loader from "@/components/Loader";
-import React from "react";
 import { useFetchSnapShotHistoryItem } from "@/api/fetchSnapShotHistoryItem.api";
 
 export default function CompareImagesHistoricalPage() {

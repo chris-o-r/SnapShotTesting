@@ -4,8 +4,12 @@ FROM node:latest AS builder
 # Set the working directory
 WORKDIR /app
 
+
 # Copy the package.json and package-lock.json files
 COPY package.json package-lock.json ./
+
+# Remove the .env
+RUN rm -f .env
 
 # Install dependencies
 RUN npm install

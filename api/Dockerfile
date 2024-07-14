@@ -1,8 +1,12 @@
-# Stage 1: Build the Rust Axum API
-FROM rust:latest AS builder
+# Use the official Rust image as the base image
+FROM rust:latest as builder
 
-# Set the working directory
-WORKDIR /app
+# Set the working directory inside the container
+WORKDIR /usr/src/app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y pkg-config libssl-dev
+
 
 # Copy the Cargo.toml and Cargo.lock files
 COPY Cargo.toml Cargo.lock ./
@@ -10,26 +14,30 @@ COPY Cargo.toml Cargo.lock ./
 # Copy the source code
 COPY src ./src
 
-# Build the application in release mode
+# Build the application
 RUN cargo build --release
 
-# Stage 2: Create a lightweight image with the compiled binary
-FROM debian:bookworm-slim
+# Use a minimal image for the final stage
+FROM debian:buster-slim
 
-# Install necessary libraries
-RUN apt-get update && apt-get install -y \
-    libssl-dev \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+# Install required runtime dependencies
+RUN apt-get update && apt-get install -y libssl1.1 ca-certificates && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory
-WORKDIR /app
+
+# Create a non-root user
+RUN adduser --disabled-password --gecos '' appuser
 
 # Copy the compiled binary from the builder stage
-COPY --from=builder /app/target/release/snap-shot-api .
+COPY --from=builder /usr/src/app/target/release/snap-shot-api /usr/local/bin/snap-shot-api
 
-# Expose the API port
-EXPOSE 8080
+# Change ownership of the binary
+RUN chown appuser:appuser /usr/local/bin/snap-shot-api
 
-# Command to run the application
-CMD ["./snap-shot-api"]
+# Switch to the non-root user
+USER appuser
+
+# Set the command to run the binary
+CMD ["snap-shot-api"]
+
+# Expose the port that the Axum application listens on
+EXPOSE 3307
