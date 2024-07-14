@@ -4,11 +4,18 @@ use anyhow::{Error, Ok};
 use fantoccini::{Client, ClientBuilder};
 use futures_util::{future::join_all, stream::FuturesUnordered};
 
-use crate::{capture_screen_shots::ScreenShotParams, save_images::safe_save_image};
+use crate::save_images::safe_save_image;
 struct RawImage {
     raw_image: Vec<u8>,
     folder: String,
     image_name: String,
+}
+
+#[derive(Clone)]
+pub struct ScreenShotParams {
+    pub url: String,
+    pub id: String,
+    pub folder: String,
 }
 
 pub async fn capture_screenshots(
@@ -19,7 +26,7 @@ pub async fn capture_screenshots(
     let handles = FuturesUnordered::new();
     let mut results: Vec<String> = vec![];
 
-    let max_threads = urls.len() / 20 + 1;
+    let max_threads = urls.len() / 4 + 1;
 
     for chunk in urls.chunks(max_threads) {
         let chunk = chunk.to_vec();
@@ -62,7 +69,6 @@ async fn take_screenshots(
             folder: folder_name.to_string(),
             image_name: url.id.to_string(),
         });
-        tracing::info!("Captured screenshot for url: {}", url.url);
     }
 
     client.close().await?;
@@ -73,8 +79,6 @@ async fn take_screenshots(
 async fn capture_screenshot_from_url(client: &Client, url: &str) -> Result<Vec<u8>, Error> {
     const TIME_OUT: Duration = std::time::Duration::from_secs(5);
     const INTERVAL: Duration = std::time::Duration::from_millis(500);
-
-    tracing::info!("Captured screenshot for url: {}", url);
 
     client.goto(url).await?;
 
@@ -91,8 +95,6 @@ async fn capture_screenshot_from_url(client: &Client, url: &str) -> Result<Vec<u
         .unwrap()
         .screenshot()
         .await?;
-
-    tracing::info!("Captured screenshot for url: {}", url);
 
     Ok(screenshot)
 }

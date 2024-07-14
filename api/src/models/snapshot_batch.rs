@@ -1,3 +1,4 @@
+use axum::{body::Body, http::Response, response::IntoResponse};
 use chrono::NaiveDateTime;
 use lib::{compare_images::CompareImagesReturn, date_format};
 use sqlx::{postgres::PgRow, Row};
@@ -35,5 +36,15 @@ impl<'r> sqlx::FromRow<'r, PgRow> for SnapShotBatchDTO {
             new_story_book_version: row.try_get("new_story_book_version")?,
             old_story_book_version: row.try_get("old_story_book_version")?,
         })
+    }
+}
+
+impl IntoResponse for SnapShotBatch {
+    fn into_response(self) -> Response<Body> {
+        (
+            axum::http::StatusCode::OK,
+            serde_json::to_string(&self).unwrap_or_default(),
+        )
+            .into_response()
     }
 }

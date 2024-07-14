@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::models::snap_shot::SnapShot;
 
-pub async fn insert_snap_shots(
+pub async fn insert_snapshots(
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     snap_shots: Vec<SnapShot>,
 ) -> Result<(), anyhow::Error> {
@@ -63,7 +63,7 @@ pub async fn insert_snap_shots(
     Ok(())
 }
 
-pub async fn get_all_snap_shots_by_batch_id(
+pub async fn get_all_snapshots_by_batch_id(
     pool: &Pool<Postgres>,
     batch_id: &Uuid,
 ) -> Result<Vec<SnapShot>, anyhow::Error> {

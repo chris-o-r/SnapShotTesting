@@ -8,15 +8,15 @@ use uuid::Uuid;
 
 use crate::{
     api::errors::AppError,
-    models::{app_state::AppState, snap_shot_batch::SnapShotBatch},
-    service::snap_shot_history_service,
+    models::{app_state::AppState, snapshot_batch::SnapShotBatch},
+    service::snapshot_history_service,
 };
-pub async fn handle_get_snap_shot_by_id(
+pub async fn handle_get_snapshot_by_id(
     Path(id): Path<Uuid>,
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<SnapShotBatch>, AppError> {
     let result =
-        snap_shot_history_service::get_snap_shot_batch_by_id(id, state.db_pool.clone()).await?;
+        snapshot_history_service::get_snap_shot_batch_by_id(id, state.db_pool.clone()).await?;
 
     if result.is_some() {
         return Ok(Json(result.unwrap()));

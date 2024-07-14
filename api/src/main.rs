@@ -3,8 +3,8 @@ pub mod db;
 pub mod models;
 pub mod service;
 use api::routes::{
-    handle_get_job_by_id, handle_get_snap_shot_by_id::handle_get_snap_shot_by_id,
-    snap_shot::handle_snap_shot, snap_shot_history::handle_get_snap_shot_history,
+    handle_get_job_by_id, handle_get_snapshot_by_id::handle_get_snapshot_by_id,
+    handle_snapshot::handle_snapshot, snapshot_history::handle_get_snapshot_history,
 };
 use axum::{
     routing::{get, post},
@@ -58,8 +58,8 @@ async fn serve(app: Router, port: u16) {
         listener,
         app.layer(
             TraceLayer::new_for_http()
-                .make_span_with(trace::DefaultMakeSpan::new().level(Level::DEBUG))
-                .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
+                .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
+                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         )
         .layer(cors),
     )
@@ -70,9 +70,9 @@ async fn serve(app: Router, port: u16) {
 fn create_routes(app_state: Arc<AppState>) -> Router {
     Router::new()
         .nest_service("/assets", ServeDir::new("assets"))
-        .route("/snap-shot", post(handle_snap_shot))
-        .route("/snap-shot", get(handle_get_snap_shot_history))
-        .route("/snap-shot/:id", get(handle_get_snap_shot_by_id))
+        .route("/snap-shot", post(handle_snapshot))
+        .route("/snap-shot", get(handle_get_snapshot_history))
+        .route("/snap-shot/:id", get(handle_get_snapshot_by_id))
         .route("/jobs/:id", get(handle_get_job_by_id::handle_get_job_by_id))
         .route(
             "/jobs",

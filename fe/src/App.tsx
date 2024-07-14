@@ -14,9 +14,7 @@ import Jobs from "./features/Jobs/Pages/Jobs";
 
 export const QueryClient = new RQQueryClient({
   defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 60 * 24,
-    },
+    queries: {},
   },
 });
 const persister = createSyncStoragePersister({

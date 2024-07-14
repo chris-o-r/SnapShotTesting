@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use crate::api::errors::AppError;
 use crate::models::app_state::AppState;
-use crate::models::snap_shot_batch_job::SnapShotBatchJob;
-use crate::service::snap_shot_service;
+use crate::models::snapshot_batch::SnapShotBatch;
+use crate::service::snapshot_service;
 use axum::extract::State;
 
 #[derive(Debug, Deserialize)]
@@ -16,10 +16,10 @@ pub struct SnapShotParams {
     old: Option<String>,
 }
 
-pub async fn handle_snap_shot(
+pub async fn handle_snapshot(
     State(state): State<Arc<AppState>>,
     extract::Json(payload): extract::Json<SnapShotParams>,
-) -> Result<SnapShotBatchJob, AppError> {
+) -> Result<SnapShotBatch, AppError> {
     let new = match payload.new {
         Some(new) => new,
         None => {
@@ -29,6 +29,7 @@ pub async fn handle_snap_shot(
             ))
         }
     };
+
     let old = match payload.old {
         Some(old) => old,
         None => {
@@ -39,7 +40,7 @@ pub async fn handle_snap_shot(
         }
     };
 
-    snap_shot_service::create_snap_shots(
+    snapshot_service::create_snap_shots(
         new.as_str(),
         old.as_str(),
         state.db_pool.clone(),

@@ -9,8 +9,7 @@ import Sider from "antd/es/layout/Sider";
 import { QUERY_KEYS } from "@/api/constants";
 import { toast } from "react-toastify";
 import Navigation from "@/components/Navigation";
-import Loader from "@/components/Loader";
-// import { useFetchRunningJobs } from "@/api/jobs.api";
+import Loadable from "@/components/Loader";
 
 type StartPageForm = {
   oldStoryBookUrl: string;
@@ -44,9 +43,6 @@ export const StartPage = () => {
     });
   };
 
-  if (mutate.status === "pending")
-    return <Loader text="Fetching please wait..." />;
-
   return (
     <>
       <Header style={{ display: "flex", color: "white", alignItems: "center" }}>
@@ -65,71 +61,69 @@ export const StartPage = () => {
         >
           <Navigation />
         </Sider>
-        <Content className="space-y-4 flex flex-col items-center  justify-center">
-          <h1 className="text-4xl font-sans font-bold text-black">
-            Snap Shot Testing
-          </h1>
-          <p className="text-black">
-            Please enter two story book urls to get started
-          </p>
+        <Loadable isLoading={mutate.status === "pending"}>
+          <Content className="space-y-4 flex flex-col items-center  justify-center">
+            <h1 className="text-4xl font-sans font-bold text-black">
+              Snap Shot Testing
+            </h1>
+            <p className="text-black">
+              Please enter two story book urls to get started
+            </p>
 
-          <Form
-            name="basic"
-            // labelCol={{ span: 16 }}
-            // wrapperCol={{ span: 32 }}
-            // wrapperCol={{ span: 32 }}
-            // style={{ maxWidth: 120 }}
-            className="flex flex-col items-center  justify-center"
-            initialValues={{ remember: true }}
-            onSubmitCapture={(e) => {
-              e.preventDefault();
-              handleSubmit(onSubmit);
-            }}
-            autoComplete="on"
-          >
-            <Form.Item<StartPageForm>
-              label="Old Story Book URL"
-              name="oldStoryBookUrl"
-              rules={[
-                { required: true, message: "Please input your username!" },
-              ]}
+            <Form
+              name="basic"
+              className="flex flex-col items-center  justify-center"
+              initialValues={{ remember: true }}
+              onSubmitCapture={(e) => {
+                e.preventDefault();
+                handleSubmit(onSubmit);
+              }}
+              autoComplete="on"
             >
-              <Controller
+              <Form.Item<StartPageForm>
+                label="Old Story Book URL"
                 name="oldStoryBookUrl"
-                defaultValue=""
-                control={control}
-                render={({ field }) => (
-                  <Input className="min-w-48" {...field} />
-                )}
-              />
-            </Form.Item>
-            <Form.Item<StartPageForm>
-              label="New Story Book URL"
-              name="newStoryBookUrl"
-              rules={[
-                { required: true, message: "Please input your username!" },
-              ]}
-            >
-              <Controller
-                name="newStoryBookUrl"
-                defaultValue=""
-                control={control}
-                render={({ field }) => (
-                  <Input className="min-w-48" {...field} />
-                )}
-              />
-            </Form.Item>
-            <Form.Item>
-              <Button
-                type="primary"
-                htmlType="submit"
-                onClick={handleSubmit(onSubmit)}
+                rules={[
+                  { required: true, message: "Please input your username!" },
+                ]}
               >
-                Submit
-              </Button>
-            </Form.Item>
-          </Form>
-        </Content>
+                <Controller
+                  name="oldStoryBookUrl"
+                  defaultValue=""
+                  control={control}
+                  render={({ field }) => (
+                    <Input className="min-w-48" {...field} />
+                  )}
+                />
+              </Form.Item>
+              <Form.Item<StartPageForm>
+                label="New Story Book URL"
+                name="newStoryBookUrl"
+                rules={[
+                  { required: true, message: "Please input your username!" },
+                ]}
+              >
+                <Controller
+                  name="newStoryBookUrl"
+                  defaultValue=""
+                  control={control}
+                  render={({ field }) => (
+                    <Input className="min-w-48" {...field} />
+                  )}
+                />
+              </Form.Item>
+              <Form.Item>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  onClick={handleSubmit(onSubmit)}
+                >
+                  Submit
+                </Button>
+              </Form.Item>
+            </Form>
+          </Content>
+        </Loadable>
       </Layout>
     </>
   );

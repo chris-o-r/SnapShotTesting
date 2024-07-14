@@ -5,8 +5,8 @@ import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { API_BASE_URL } from "@/constants";
 import { getMenuItemsHistoricalPage } from "../utils/getMenuItemsHistoricalPage";
-import Loader from "@/components/Loader";
 import { useFetchSnapShotHistoryItem } from "@/api/fetchSnapShotHistoryItem.api";
+import Loadable from "@/components/Loader";
 
 export default function CompareImagesHistoricalPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -17,8 +17,6 @@ export default function CompareImagesHistoricalPage() {
   const { data: historicalSnapShotData, isLoading } =
     useFetchSnapShotHistoryItem(historicalSnapShotId ?? "");
 
-  console.log(historicalSnapShotData);
-
   const onClick: MenuProps["onClick"] = (e) => {
     if (e.keyPath.length === 1) {
       setCurrent(e.key);
@@ -26,12 +24,9 @@ export default function CompareImagesHistoricalPage() {
       setSelectedImage(e.key);
     }
   };
-  if (isLoading) {
-    return <Loader text="Fetching please wait..." />;
-  }
 
   return (
-    <>
+    <Loadable isLoading={isLoading}>
       <Header style={{ display: "flex", color: "white", alignItems: "center" }}>
         <h1 className="text-2xl">
           Comparing {historicalSnapShotData?.old_story_book_version} with{" "}
@@ -70,6 +65,6 @@ export default function CompareImagesHistoricalPage() {
           </Content>
         </Layout>
       </Content>
-    </>
+    </Loadable>
   );
 }

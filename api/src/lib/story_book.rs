@@ -3,8 +3,9 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-use super::capture_screen_shots::ScreenShotParams;
 use anyhow::Error;
+
+use crate::capture_screenshots::ScreenShotParams;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde_with::serde_as]
@@ -31,7 +32,7 @@ pub async fn get_story_book_config(url: &str) -> Result<StoryBookConfig, Error> 
     Ok(config)
 }
 
-pub async fn get_screen_shot_params_by_url(
+pub async fn get_screenshot_params_by_url(
     url: &str,
     folder_name: &str,
 ) -> Result<Vec<ScreenShotParams>, Error> {

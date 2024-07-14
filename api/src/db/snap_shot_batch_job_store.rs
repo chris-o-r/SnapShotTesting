@@ -3,7 +3,7 @@ use crate::models::snap_shot_batch_job::SnapShotBatchJob;
 use bb8_redis::{bb8::Pool, redis::cmd, RedisConnectionManager};
 const REDIS_KEY: &str = "snap_shot_batch_job";
 
-pub async fn insert_snap_shot_batch_job(
+pub async fn insert_snapshot_batch_job(
     pool: &Pool<RedisConnectionManager>,
     snap_shot_batch_job: SnapShotBatchJob,
 ) -> Result<SnapShotBatchJob, anyhow::Error> {
@@ -54,7 +54,7 @@ pub async fn update_snap_shot_batch_job(
     pool: &Pool<RedisConnectionManager>,
     snap_shot_batch_job: SnapShotBatchJob,
 ) -> Result<SnapShotBatchJob, anyhow::Error> {
-    insert_snap_shot_batch_job(pool, snap_shot_batch_job).await
+    insert_snapshot_batch_job(pool, snap_shot_batch_job).await
 }
 
 pub async fn get_all_jobs(

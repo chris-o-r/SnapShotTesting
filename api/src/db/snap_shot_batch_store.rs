@@ -1,6 +1,6 @@
 use sqlx::{Pool, Postgres};
 
-use crate::models::snap_shot_batch::SnapShotBatchDTO;
+use crate::models::snapshot_batch::SnapShotBatchDTO;
 
 pub async fn insert_snap_shot_batch(
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
@@ -37,7 +37,7 @@ pub async fn insert_snap_shot_batch(
     }
 }
 
-pub async fn get_all_snap_shot_batches(
+pub async fn get_all_snapshot_batches(
     pool: &Pool<Postgres>,
 ) -> Result<Vec<SnapShotBatchDTO>, anyhow::Error> {
     let sql = r"

@@ -3,23 +3,23 @@ use lib::compare_images::CompareImagesReturn;
 use uuid::Uuid;
 
 use crate::{
-    db::{snap_shot_batch_store, snap_shot_store::get_all_snap_shots_by_batch_id},
+    db::{snap_shot_batch_store, snap_shot_store::get_all_snapshots_by_batch_id},
     models::{
         snap_shot::{SnapShot, SnapShotType},
-        snap_shot_batch::{SnapShotBatch, SnapShotBatchDTO},
+        snapshot_batch::{SnapShotBatch, SnapShotBatchDTO},
     },
 };
 
-pub async fn get_snap_shot_history(
+pub async fn get_snapshot_history(
     db_pool: sqlx::Pool<sqlx::Postgres>,
 ) -> Result<Vec<SnapShotBatch>, Error> {
     let mut result: Vec<SnapShotBatch> = Vec::new();
-    let snap_shot_batches = snap_shot_batch_store::get_all_snap_shot_batches(&db_pool).await?;
-
+    let snap_shot_batches = snap_shot_batch_store::get_all_snapshot_batches(&db_pool).await?;
+    
     for batch in snap_shot_batches {
-        let snap_shots = get_all_snap_shots_by_batch_id(&db_pool, &batch.id).await?;
+        let snap_shots = get_all_snapshots_by_batch_id(&db_pool, &batch.id).await?;
 
-        let snap_shot_batch = create_snap_shot_batch_from_dto(batch, snap_shots);
+        let snap_shot_batch = create_snapshot_batch_from_dto(batch, snap_shots);
 
         result.push(snap_shot_batch);
     }
@@ -35,12 +35,12 @@ pub async fn get_snap_shot_batch_by_id(
         None => return Ok(None),
     };
 
-    let snap_shots = get_all_snap_shots_by_batch_id(&db_pool, &batch_dto.id).await?;
+    let snap_shots = get_all_snapshots_by_batch_id(&db_pool, &batch_dto.id).await?;
 
-    Ok(Some(create_snap_shot_batch_from_dto(batch_dto, snap_shots)))
+    Ok(Some(create_snapshot_batch_from_dto(batch_dto, snap_shots)))
 }
 
-fn create_snap_shot_batch_from_dto(
+fn create_snapshot_batch_from_dto(
     snap_shot_batch_dto: SnapShotBatchDTO,
     snap_shots: Vec<SnapShot>,
 ) -> SnapShotBatch {
