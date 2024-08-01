@@ -9,12 +9,12 @@ use uuid::Uuid;
 
 use crate::{
     db::{
-        snap_shot_batch_job_store, snap_shot_batch_store,
-        snap_shot_store::{self},
+        snapshot_batch_job_store, snap_shot_batch_store,
+        snapshot_store::{self},
     },
     models::{
-        snap_shot::{SnapShot, SnapShotType},
-        snap_shot_batch_job::{SnapShotBatchJob, SnapShotBatchJobStatus},
+        snapshot::{SnapShot, SnapShotType},
+        snapshot_batch_job::{SnapShotBatchJob, SnapShotBatchJobStatus},
         snapshot_batch::{SnapShotBatch, SnapShotBatchDTO},
     },
 };
@@ -47,7 +47,7 @@ pub async fn create_snap_shots(
     job.snap_shot_batch_id = Some(batch.id.clone());
     job.updated_at = Utc::now().naive_utc();
     job.progress = 0.1;
-    snap_shot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
+    snapshot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
 
     let random_folder_name = format!(
         "{}-{}",
@@ -63,7 +63,7 @@ pub async fn create_snap_shots(
 
     job.updated_at = Utc::now().naive_utc();
     job.progress = 0.4;
-    snap_shot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
+    snapshot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
 
     let images_2: Vec<String> =
         handle_snap_shot_for_url(&old_url, random_folder_name.as_str(), "old").await?;
@@ -71,7 +71,7 @@ pub async fn create_snap_shots(
     job.updated_at = Utc::now().naive_utc();
     job.progress = 0.7;
 
-    snap_shot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
+    snapshot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
 
     let diff_images = compare_images::compare_images(
         images_1.clone(),
@@ -87,14 +87,14 @@ pub async fn create_snap_shots(
         &batch.id.clone(),
     );
 
-    snap_shot_store::insert_snapshots(&mut transaction, snap_shots).await?;
+    snapshot_store::insert_snapshots(&mut transaction, snap_shots).await?;
 
     transaction.commit().await?;
 
     job.status = SnapShotBatchJobStatus::Completed;
     job.progress = 1.0;
     job.updated_at = Utc::now().naive_utc();
-    snap_shot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
+    snapshot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
 
     Ok(SnapShotBatch {
         id: batch.id,
@@ -207,7 +207,7 @@ async fn create_batch_job(
         updated_at: Utc::now().naive_utc(),
     };
 
-    snap_shot_batch_job_store::insert_snapshot_batch_job(redis_pool, snap_shot_batch_job.clone())
+    snapshot_batch_job_store::insert_snapshot_batch_job(redis_pool, snap_shot_batch_job.clone())
         .await?;
 
     Ok(snap_shot_batch_job)

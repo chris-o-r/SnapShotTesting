@@ -10,6 +10,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use db::snapshot_batch_job_store;
 use models::app_state::AppState;
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::{
@@ -34,6 +35,16 @@ async fn main() {
             std::process::exit(1);
         }
     };
+
+    match snapshot_batch_job_store::remove_all_jobs(&app_state.redis_pool).await {
+        Ok(_) => {
+            tracing::info!("All historical jobs cleaned");
+        }
+        Err(e) => {
+            tracing::error!("Failed to remove all jobs: {}", e);
+            std::process::exit(1);
+        }
+    }
 
     tokio::join!(serve(create_routes(app_state.clone()), port));
 }

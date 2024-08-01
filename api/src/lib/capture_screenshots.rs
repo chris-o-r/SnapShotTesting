@@ -26,7 +26,7 @@ pub async fn capture_screenshots(
     let handles = FuturesUnordered::new();
     let mut results: Vec<String> = vec![];
 
-    let max_threads = urls.len() / 4 + 1;
+    let max_threads = (urls.len() / 4) + 1;
 
     for chunk in urls.chunks(max_threads) {
         let chunk = chunk.to_vec();
@@ -62,13 +62,18 @@ async fn take_screenshots(
     for url in params.into_iter() {
         let folder_name = format!("{}/{}", random_folder_name, &url.folder);
 
-        let screen_shot = capture_screenshot_from_url(&client, &url.url).await?;
+        let screen_shot = capture_screenshot_from_url(&client, &url.url).await;
 
-        raw_images.push(RawImage {
-            raw_image: screen_shot,
-            folder: folder_name.to_string(),
-            image_name: url.id.to_string(),
-        });
+        if screen_shot.is_err() {
+            tracing::error!("Failed to capture screenshot from url: {}", url.url);
+        } else {
+            tracing::info!("Captured screenshot from url: {}", url.url);
+            raw_images.push(RawImage {
+                raw_image: screen_shot.unwrap(),
+                folder: folder_name.to_string(),
+                image_name: url.id.to_string(),
+            });
+        }
     }
 
     client.close().await?;

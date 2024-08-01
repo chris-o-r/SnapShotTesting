@@ -3,7 +3,7 @@ use chrono::NaiveDateTime;
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
-use crate::models::snap_shot::SnapShot;
+use crate::models::snapshot::SnapShot;
 
 pub async fn insert_snapshots(
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,

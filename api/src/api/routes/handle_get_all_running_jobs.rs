@@ -4,7 +4,7 @@ use axum::{extract::State, Json};
 
 use crate::{
     api::errors::AppError,
-    models::{app_state::AppState, snap_shot_batch_job::SnapShotBatchJob},
+    models::{app_state::AppState, snapshot_batch_job::SnapShotBatchJob},
     service::snapshot_job_service,
 };
 

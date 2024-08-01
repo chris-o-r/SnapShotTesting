@@ -3,9 +3,9 @@ use lib::compare_images::CompareImagesReturn;
 use uuid::Uuid;
 
 use crate::{
-    db::{snap_shot_batch_store, snap_shot_store::get_all_snapshots_by_batch_id},
+    db::{snap_shot_batch_store, snapshot_store::get_all_snapshots_by_batch_id},
     models::{
-        snap_shot::{SnapShot, SnapShotType},
+        snapshot::{SnapShot, SnapShotType},
         snapshot_batch::{SnapShotBatch, SnapShotBatchDTO},
     },
 };
