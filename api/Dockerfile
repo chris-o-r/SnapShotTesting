@@ -18,11 +18,12 @@ COPY src ./src
 RUN cargo build --release
 
 # Use a minimal image for the final stage
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 
 # Install required runtime dependencies
-RUN apt-get update && apt-get install -y libssl1.1 ca-certificates && rm -rf /var/lib/apt/lists/*
-
+RUN apt-get update \
+    && apt-get install -y ca-certificates tzdata \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
 RUN adduser --disabled-password --gecos '' appuser
@@ -40,4 +41,4 @@ USER appuser
 CMD ["snap-shot-api"]
 
 # Expose the port that the Axum application listens on
-EXPOSE 3307
+EXPOSE 8080

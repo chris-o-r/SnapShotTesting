@@ -6,20 +6,25 @@ services:
       context: ./api
       dockerfile: Dockerfile
     ports:
-      - "3307:3307"
+      - 8080:8080
     dns:
       - 8.8.8.8
       - 8.8.4.4
     environment:
-      BASE_URL: 127.0.0.1
-      PORT: 3307
+      BASE_URL: 0.0.0.0
+      PORT: 8080
       DB_NAME: mydatabase
       DB_USER: myuser
       DB_PASSWORD: mypassword
       DB_HOST: postgres
       DB_PORT: 5432
+      REDIS_URL: redis://redis:6379/
+      REDIS_PORT: 6379
+      SELENIUM_PORT: 4444
+      SELENIUM_HOST: selenium
     depends_on:
       - postgres
+      - redis
       - selenium
   frontend:
     build:
@@ -31,15 +36,15 @@ services:
       - api
     environment:
       VITE_API_BASE_URL: http://api:3307
-  # redis:
-  #   image: redis
-  #   container_name: redis-snap-shot
-  #   ports:
-  #     - "127.0.0.1:6377:6377"
-  #   volumes:
-  #     - ../redis-data:/data
-  #     - ./redis.conf:/usr/local/etc/redis/redis.conf
-  #   command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+  redis:
+    image: redis
+    container_name: redis-snap-shot
+    ports:
+      - '6379:6379'
+    volumes:
+      - ../redis-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
   postgres:
     image: postgres:14-alpine
     ports:
@@ -51,13 +56,13 @@ services:
     volumes:
       - ../postrgress/pgdata:/var/lib/postgresql/data
   selenium:
-    image: selenium/standalone-chrome:latest  # Using the specified image
-    shm_size: "4g"  # Shared memory size
+    image: selenium/standalone-chrome:latest # Using the specified image
+    shm_size: "4g" # Shared memory size
     dns:
-      - 8.8.8.8  # DNS settings
+      - 8.8.8.8 # DNS settings
     ports:
-      - "4444:4444"  # Port mapping
-      - "7900:7900"  # Port mapping
+      - "4444:4444" # Port mapping
+      - "7900:7900" # Port mapping
     environment:
       - SE_NODE_MAX_SESSIONS=5
       - SE_NODE_OVERRIDE_MAX_SESSIONS=false

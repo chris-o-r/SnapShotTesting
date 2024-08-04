@@ -11,7 +11,8 @@ use axum::{
     Router,
 };
 use db::snapshot_batch_job_store;
-use models::app_state::AppState;
+// use db::snapshot_batch_job_store;
+use models::app_state::{self, AppState};
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::{
     cors::{Any, CorsLayer},
@@ -19,6 +20,7 @@ use tower_http::{
     trace::{self, TraceLayer},
 };
 use tracing::Level;
+use tracing_subscriber::fmt::format;
 
 #[tokio::main]
 async fn main() {
@@ -36,6 +38,10 @@ async fn main() {
         }
     };
 
+    let base_url = app_state.env_variables.base_url.clone();
+
+    let url = format!("{}:{}", base_url, port);
+
     match snapshot_batch_job_store::remove_all_jobs(&app_state.redis_pool).await {
         Ok(_) => {
             tracing::info!("All historical jobs cleaned");
@@ -46,20 +52,19 @@ async fn main() {
         }
     }
 
-    tokio::join!(serve(create_routes(app_state.clone()), port));
+    tokio::join!(serve(create_routes(app_state.clone()), url));
 }
 
-async fn serve(app: Router, port: u16) {
+async fn serve(app: Router, url: String) {
     let cors = CorsLayer::new()
         .allow_origin(Any) // Allow any origin
         .allow_methods(Any) // Allow any method (GET, POST, etc.)
         .allow_headers(Any); // Allow any header
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    let listener = match tokio::net::TcpListener::bind(addr).await {
+    let listener = match tokio::net::TcpListener::bind(url.clone()).await {
         Ok(listener) => listener,
         Err(e) => {
-            panic!("Failed to bind to port {}: {}", port, e);
+            panic!("Failed to listen on url {}", url);
         }
     };
 
@@ -69,8 +74,8 @@ async fn serve(app: Router, port: u16) {
         listener,
         app.layer(
             TraceLayer::new_for_http()
-                .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
-                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
+                .make_span_with(trace::DefaultMakeSpan::new().level(Level::DEBUG))
+                .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
         )
         .layer(cors),
     )
@@ -80,6 +85,7 @@ async fn serve(app: Router, port: u16) {
 
 fn create_routes(app_state: Arc<AppState>) -> Router {
     Router::new()
+        .route("/ping", get(api::routes::handle_ping::handler))
         .nest_service("/assets", ServeDir::new("assets"))
         .route("/snap-shot", post(handle_snapshot))
         .route("/snap-shot", get(handle_get_snapshot_history))

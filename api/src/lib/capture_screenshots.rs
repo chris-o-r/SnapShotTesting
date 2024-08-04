@@ -1,14 +1,24 @@
-use std::time::Duration;
+use std::{env, time::Duration};
 
+use crate::save_images::safe_save_image;
 use anyhow::{Error, Ok};
 use fantoccini::{Client, ClientBuilder};
 use futures_util::{future::join_all, stream::FuturesUnordered};
-
-use crate::save_images::safe_save_image;
+use lazy_static::lazy_static;
 struct RawImage {
     raw_image: Vec<u8>,
     folder: String,
     image_name: String,
+}
+
+lazy_static! {
+    static ref SELENIUM_PORT: String = env::var("SELENIUM_PORT").unwrap();
+    static ref SELENIUM_HOST: String = env::var("SELENIUM_HOST").unwrap();
+    static ref SELENIUM_URL: String = format!(
+        "http://{}:{}",
+        SELENIUM_HOST.as_str(),
+        SELENIUM_PORT.as_str()
+    );
 }
 
 #[derive(Clone)]
@@ -105,8 +115,6 @@ async fn capture_screenshot_from_url(client: &Client, url: &str) -> Result<Vec<u
 }
 
 async fn connect() -> Result<Client, Error> {
-    static CHROME_INSTANCE_URL: &str = "http://localhost:4444";
-
     let mut caps: serde_json::Map<String, serde_json::Value> = serde_json::map::Map::new();
     let args = serde_json::json!([
         "--headless",
@@ -122,7 +130,7 @@ async fn connect() -> Result<Client, Error> {
 
     let c: Client = ClientBuilder::native()
         .capabilities(caps)
-        .connect(CHROME_INSTANCE_URL)
+        .connect(&SELENIUM_URL)
         .await?;
 
     Ok(c)

@@ -8,6 +8,8 @@ pub struct EnvVariables {
     pub base_url: String,
     pub port: String,
     pub db_config: DBConfig,
+    pub selenium_port: String,
+    pub selenium_host: String,
 }
 
 impl EnvVariables {
@@ -26,10 +28,23 @@ impl EnvVariables {
 
         let db_config = DBConfig::new();
 
+
+        let selenium_port = match env::var("SELENIUM_PORT") {
+            Ok(val) => val,
+            Err(_) => panic!("SELENIUM_PORT must be set"),
+        };
+
+        let selenium_host = match env::var("SELENIUM_HOST") {
+            Ok(val) => val,
+            Err(_) => panic!("SELENIUM_HOST must be set"),
+        };
+
         Self {
             base_url,
             port,
             db_config,
+            selenium_port,
+            selenium_host,
         }
     }
 }
