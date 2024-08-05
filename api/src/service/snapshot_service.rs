@@ -1,21 +1,21 @@
-use anyhow::Error;
-use chrono::{NaiveDateTime, Utc};
-use lib::{
+use crate::utils::{
     capture_screenshots,
     compare_images::{self, CompareImagesReturn},
     story_book::get_screenshot_params_by_url,
 };
+use anyhow::Error;
+use chrono::{NaiveDateTime, Utc};
 use uuid::Uuid;
 
 use crate::{
     db::{
-        snapshot_batch_job_store, snap_shot_batch_store,
+        snap_shot_batch_store, snapshot_batch_job_store,
         snapshot_store::{self},
     },
     models::{
         snapshot::{SnapShot, SnapShotType},
-        snapshot_batch_job::{SnapShotBatchJob, SnapShotBatchJobStatus},
         snapshot_batch::{SnapShotBatch, SnapShotBatchDTO},
+        snapshot_batch_job::{SnapShotBatchJob, SnapShotBatchJobStatus},
     },
 };
 

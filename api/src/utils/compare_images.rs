@@ -1,4 +1,4 @@
-use crate::diff_img;
+use super::{diff_img, env_variables};
 use anyhow::Error;
 use futures_util::{future::join_all, stream::FuturesUnordered};
 use image;
@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use tokio::task::{self};
 
-use crate::save_images;
+use super::save_images;
 
 const DIFF_RATIO_THRESHOLD: f64 = 0.0001;
 const IMAGE_NOT_FOUND: &str = "not found";
@@ -23,11 +23,14 @@ pub async fn compare_images(
     image_paths_2: Vec<String>,
     random_folder_name: &str,
 ) -> Result<CompareImagesReturn, Error> {
+    let env_variables = env_variables::EnvVariables::new();
+
     let handles = FuturesUnordered::new();
 
     let path_pairs = get_matching_path_pairs(image_paths_1, image_paths_2);
 
-    let random_folder_name: String = format!("assets/{}", random_folder_name);
+    let random_folder_name: String =
+        format!("{}/{}", env_variables.assets_folder, random_folder_name);
 
     fs::create_dir_all(&random_folder_name)?;
     fs::create_dir_all(format!("{}/deleted", random_folder_name))?;

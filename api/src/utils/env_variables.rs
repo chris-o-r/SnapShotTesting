@@ -1,7 +1,7 @@
 use dotenv::dotenv;
 use std::env;
 
-use super::db_config::DBConfig;
+use crate::models::db_config::DBConfig;
 
 #[derive(Clone)]
 pub struct EnvVariables {
@@ -10,6 +10,7 @@ pub struct EnvVariables {
     pub db_config: DBConfig,
     pub selenium_port: String,
     pub selenium_host: String,
+    pub assets_folder: String,
 }
 
 impl EnvVariables {
@@ -28,7 +29,6 @@ impl EnvVariables {
 
         let db_config = DBConfig::new();
 
-
         let selenium_port = match env::var("SELENIUM_PORT") {
             Ok(val) => val,
             Err(_) => panic!("SELENIUM_PORT must be set"),
@@ -39,7 +39,13 @@ impl EnvVariables {
             Err(_) => panic!("SELENIUM_HOST must be set"),
         };
 
+        let assets_folder = match env::var("ASSETS_FOLDER") {
+            Ok(val) => val,
+            Err(_) => panic!("ASSETS_FOLDER must be set"),
+        };
+
         Self {
+            assets_folder,
             base_url,
             port,
             db_config,

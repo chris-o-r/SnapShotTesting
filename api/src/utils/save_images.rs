@@ -2,13 +2,19 @@ use std::{fs, path::Path};
 
 use anyhow::Error;
 
+use super::env_variables;
+
 pub fn safe_save_image(
     raw_image: Vec<u8>,
     folder: &str,
     image_name: &str,
 ) -> Result<String, Error> {
-    let file_name = format!("assets/{}/{}.png", folder, image_name);
-    let path_str = format!("assets/{}", folder);
+    let env_variables = env_variables::EnvVariables::new();
+    let file_name = format!(
+        "{}/{}/{}.png",
+        env_variables.assets_folder, folder, image_name
+    );
+    let path_str = format!("{}/{}", env_variables.assets_folder, folder);
     let path = Path::new(path_str.as_str());
 
     if !Path::exists(path) {

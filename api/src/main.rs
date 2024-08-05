@@ -1,36 +1,29 @@
-pub mod api;
-pub mod db;
-pub mod models;
-pub mod service;
-use api::routes::{
-    handle_get_job_by_id, handle_get_snapshot_by_id::handle_get_snapshot_by_id,
-    handle_snapshot::handle_snapshot, snapshot_history::handle_get_snapshot_history,
-};
 use axum::{
     routing::{get, post},
     Router,
 };
-use db::snapshot_batch_job_store;
-// use db::snapshot_batch_job_store;
-use models::app_state::{self, AppState};
-use std::{net::SocketAddr, sync::Arc};
+
+use lib::db::snapshot_batch_job_store;
+use lib::models::app_state::AppState;
+use lib::utils::env_variables;
+use std::sync::Arc;
 use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
     trace::{self, TraceLayer},
 };
 use tracing::Level;
-use tracing_subscriber::fmt::format;
 
 #[tokio::main]
 async fn main() {
     let app_state: Arc<AppState> = Arc::new(AppState::new().await);
+    let env_variables = env_variables::EnvVariables::new();
 
     tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(tracing_subscriber::filter::LevelFilter::INFO)
         .init();
 
-    let port = match app_state.env_variables.port.parse::<u16>() {
+    let port = match env_variables.port.parse::<u16>() {
         Ok(port) => port,
         Err(_) => {
             tracing::error!("Invalid port number. Exiting...");
@@ -38,7 +31,7 @@ async fn main() {
         }
     };
 
-    let base_url = app_state.env_variables.base_url.clone();
+    let base_url = env_variables.base_url.clone();
 
     let url = format!("{}:{}", base_url, port);
 
@@ -64,6 +57,8 @@ async fn serve(app: Router, url: String) {
     let listener = match tokio::net::TcpListener::bind(url.clone()).await {
         Ok(listener) => listener,
         Err(e) => {
+            tracing::error!("Failed to listen on url {}", url);
+            tracing::error!("Error: {}", e);
             panic!("Failed to listen on url {}", url);
         }
     };
@@ -84,16 +79,30 @@ async fn serve(app: Router, url: String) {
 }
 
 fn create_routes(app_state: Arc<AppState>) -> Router {
+    let env_variables = env_variables::EnvVariables::new();
+
     Router::new()
-        .route("/ping", get(api::routes::handle_ping::handler))
-        .nest_service("/assets", ServeDir::new("assets"))
-        .route("/snap-shot", post(handle_snapshot))
-        .route("/snap-shot", get(handle_get_snapshot_history))
-        .route("/snap-shot/:id", get(handle_get_snapshot_by_id))
-        .route("/jobs/:id", get(handle_get_job_by_id::handle_get_job_by_id))
+        .route("/ping", get(lib::api::routes::handle_ping::handler))
+        .nest_service("/assets", ServeDir::new(env_variables.assets_folder))
+        .route(
+            "/snap-shot",
+            post(lib::api::routes::handle_snapshot::handle_snapshot),
+        )
+        .route(
+            "/snap-shot",
+            get(lib::api::routes::snapshot_history::handle_get_snapshot_history),
+        )
+        .route(
+            "/snap-shot/:id",
+            get(lib::api::routes::handle_get_snapshot_by_id::handle_get_snapshot_by_id),
+        )
+        .route(
+            "/jobs/:id",
+            get(lib::api::routes::handle_get_job_by_id::handle_get_job_by_id),
+        )
         .route(
             "/jobs",
-            get(api::routes::handle_get_all_running_jobs::handle_get_all_running_jobs),
+            get(lib::api::routes::handle_get_all_running_jobs::handle_get_all_running_jobs),
         )
         .with_state(app_state.clone())
 }

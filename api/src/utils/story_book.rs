@@ -5,7 +5,7 @@ use serde_with::serde_as;
 
 use anyhow::Error;
 
-use crate::capture_screenshots::ScreenShotParams;
+use super::capture_screenshots::ScreenShotParams;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde_with::serde_as]

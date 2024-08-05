@@ -3,12 +3,11 @@ use sqlx::{Pool, Postgres};
 
 use crate::{
     db::{connection::create_connection_pool, redis_connection::create_redis_pool},
-    models::env_variables::EnvVariables,
+    utils::env_variables::EnvVariables,
 };
 
 #[derive(Clone)]
 pub struct AppState {
-    pub env_variables: EnvVariables,
     pub db_pool: Pool<Postgres>,
     pub redis_pool: bb8_redis::bb8::Pool<bb8_redis::RedisConnectionManager>,
 }
@@ -28,7 +27,6 @@ impl AppState {
         let redis_pool: bb8::Pool<RedisConnectionManager> = create_redis_pool().await;
 
         Self {
-            env_variables,
             db_pool,
             redis_pool,
         }

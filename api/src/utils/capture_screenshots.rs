@@ -1,6 +1,6 @@
 use std::{env, time::Duration};
 
-use crate::save_images::safe_save_image;
+use super::save_images::safe_save_image;
 use anyhow::{Error, Ok};
 use fantoccini::{Client, ClientBuilder};
 use futures_util::{future::join_all, stream::FuturesUnordered};

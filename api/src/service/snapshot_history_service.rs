@@ -1,5 +1,5 @@
+use crate::utils::compare_images::CompareImagesReturn;
 use anyhow::Error;
-use lib::compare_images::CompareImagesReturn;
 use uuid::Uuid;
 
 use crate::{
@@ -15,7 +15,7 @@ pub async fn get_snapshot_history(
 ) -> Result<Vec<SnapShotBatch>, Error> {
     let mut result: Vec<SnapShotBatch> = Vec::new();
     let snap_shot_batches = snap_shot_batch_store::get_all_snapshot_batches(&db_pool).await?;
-    
+
     for batch in snap_shot_batches {
         let snap_shots = get_all_snapshots_by_batch_id(&db_pool, &batch.id).await?;
 
