@@ -4,3 +4,4 @@ api/assets/
 api/assets/.DS_Store
 
 .DS_Store
+fe/.env

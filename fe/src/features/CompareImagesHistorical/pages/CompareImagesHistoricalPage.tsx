@@ -1,7 +1,7 @@
 import { Layout, Menu, MenuProps } from "antd";
 import { Content, Header } from "antd/es/layout/layout";
 import Sider from "antd/es/layout/Sider";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useState } from "react";
 import { API_BASE_URL } from "@/constants";
 import { getMenuItemsHistoricalPage } from "../utils/getMenuItemsHistoricalPage";
@@ -16,6 +16,7 @@ export default function CompareImagesHistoricalPage() {
 
   const { data: historicalSnapShotData, isLoading } =
     useFetchSnapShotHistoryItem(historicalSnapShotId ?? "");
+  const navigate = useNavigate();
 
   const onClick: MenuProps["onClick"] = (e) => {
     if (e.keyPath.length === 1) {
@@ -48,7 +49,10 @@ export default function CompareImagesHistoricalPage() {
             {historicalSnapShotData && (
               <Menu
                 theme="dark"
-                items={getMenuItemsHistoricalPage(historicalSnapShotData)}
+                items={getMenuItemsHistoricalPage(
+                  historicalSnapShotData,
+                  navigate
+                )}
                 style={{ height: "100%" }}
                 defaultSelectedKeys={["1"]}
                 defaultOpenKeys={["diff_images_paths"]}

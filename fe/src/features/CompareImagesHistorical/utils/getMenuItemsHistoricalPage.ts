@@ -1,10 +1,17 @@
-import { MenuProps } from "antd";
+import { useNavigate } from "react-router-dom";
 import { SnapShotHistoryResponse } from "../../../api/snapShotHistory.api";
+import { ItemType, MenuItemType } from "antd/es/menu/interface";
 
 export function getMenuItemsHistoricalPage(
-  data: SnapShotHistoryResponse[number]
-): MenuProps["items"] {
+  data: SnapShotHistoryResponse[number],
+  navigate: ReturnType<typeof useNavigate>
+): ItemType<MenuItemType>[] {
   return [
+    {
+      label: "Home",
+      key: "1",
+      onClick: () => navigate("/"),
+    },
     {
       label: "Diff",
       key: "diff_images_paths",
