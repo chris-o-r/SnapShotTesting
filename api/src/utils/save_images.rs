@@ -18,9 +18,11 @@ pub fn safe_save_image(
     let path = Path::new(path_str.as_str());
 
     if !Path::exists(path) {
-        fs::create_dir_all(path)?;
+        fs::create_dir_all(path).map_err(|e| {
+            tracing::error!("Error creating folder: {}", e);
+            e
+        })?;
     }
-
     fs::write(&file_name, raw_image).map_err(|e| e)?;
 
     Ok(file_name)

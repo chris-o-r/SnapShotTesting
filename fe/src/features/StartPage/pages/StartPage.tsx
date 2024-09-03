@@ -21,7 +21,6 @@ export const StartPage = () => {
     mode: "onChange",
   });
   const navigate = useNavigate();
-  // useFetchRunningJobs();
 
   const mutate = useMutateCompareStoryBookUrls();
 

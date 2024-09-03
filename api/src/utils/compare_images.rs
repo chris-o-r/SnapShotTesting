@@ -1,12 +1,11 @@
-use super::{diff_img, env_variables};
+use super::env_variables;
+use super::save_images;
 use anyhow::Error;
 use futures_util::{future::join_all, stream::FuturesUnordered};
 use image;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use tokio::task::{self};
-
-use super::save_images;
 
 const DIFF_RATIO_THRESHOLD: f64 = 0.0001;
 const IMAGE_NOT_FOUND: &str = "not found";

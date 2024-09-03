@@ -1,6 +1,7 @@
 use crate::utils::{
     capture_screenshots,
     compare_images::{self, CompareImagesReturn},
+    env_variables,
     story_book::get_screenshot_params_by_url,
 };
 use anyhow::Error;
@@ -160,13 +161,15 @@ fn paths_to_snap_shot(
     snap_shot_type: SnapShotType,
     created_at: NaiveDateTime,
 ) -> Vec<SnapShot> {
+    let asset_folder = env_variables::EnvVariables::new().assets_folder;
+    
     paths
         .iter()
         .map(|path| SnapShot {
             id: Uuid::new_v4(),
             batch_id: batch_id.clone(),
             name: path.clone(),
-            path: path.clone(),
+            path: path.replace(&asset_folder, "assets"),
             snap_shot_type: snap_shot_type.clone(),
             created_at: created_at,
         })
