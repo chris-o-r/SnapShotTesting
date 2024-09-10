@@ -83,6 +83,6 @@ const compareStoryBookUrls: MutationFunction<
     .post<
       CompareStoryBookUrlsRequest,
       AxiosResponse<CompareStoryBookUrlsResponse>
-    >(`${API_BASE_URL}/snap-shot`, params)
+    >(`${API_BASE_URL}/snap-shots`, params)
     .then((res) => res.data);
 };

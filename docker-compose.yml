@@ -23,6 +23,7 @@ services:
       SELENIUM_PORT: 4444
       SELENIUM_HOST: selenium
       ASSETS_FOLDER: /var/lib/snap-shot/data
+      SELENIUM_MAX_INSTANCES: 4
     depends_on:
       - postgres
       - redis
@@ -38,7 +39,7 @@ services:
     depends_on:
       - api
     environment:
-      VITE_API_BASE_URL: http://api:3307
+      VITE_API_BASE_URL: http://api:3307/api
   redis:
     image: redis
     container_name: redis-snap-shot

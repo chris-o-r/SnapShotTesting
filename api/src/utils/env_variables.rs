@@ -11,6 +11,7 @@ pub struct EnvVariables {
     pub selenium_port: String,
     pub selenium_host: String,
     pub assets_folder: String,
+    pub selenium_max_instances: usize,
 }
 
 impl EnvVariables {
@@ -44,6 +45,11 @@ impl EnvVariables {
             Err(_) => panic!("ASSETS_FOLDER must be set"),
         };
 
+        let selenium_max_instances = match env::var("SELENIUM_MAX_INSTANCES") {
+            Ok(val) => val.parse::<usize>().unwrap(),
+            Err(_) => panic!("SELENIUM_MAX_INSTANCES must be set"),
+        };
+
         Self {
             assets_folder,
             base_url,
@@ -51,6 +57,7 @@ impl EnvVariables {
             db_config,
             selenium_port,
             selenium_host,
+            selenium_max_instances,
         }
     }
 }
