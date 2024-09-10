@@ -1,11 +1,8 @@
-use axum::{
-    routing::{get, post},
-    Router,
-};
+use axum::{routing::get, Router};
 
 use lib::db::snapshot_batch_job_store;
 use lib::models::app_state::AppState;
-use lib::utils::env_variables;
+use lib::{api::routes::handle_jobs, utils::env_variables};
 use std::sync::Arc;
 use tower_http::{
     cors::{Any, CorsLayer},
@@ -13,6 +10,12 @@ use tower_http::{
     trace::{self, TraceLayer},
 };
 use tracing::Level;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
+
+#[derive(OpenApi)]
+#[openapi()]
+struct ApiDoc;
 
 #[tokio::main]
 async fn main() {
@@ -80,29 +83,23 @@ async fn serve(app: Router, url: String) {
 
 fn create_routes(app_state: Arc<AppState>) -> Router {
     let env_variables = env_variables::EnvVariables::new();
+    let mut doc = ApiDoc::openapi();
 
+    doc.merge(handle_jobs::JobApiDoc::openapi());
+    doc.merge(lib::api::routes::handle_snapshot::SnapshotDoc::openapi());
+
+
+    // std::fs::write("./bindings/api-docs.json", doc.to_json().unwrap()).unwrap();
+
+    // doc.info.title
     Router::new()
         .route("/ping", get(lib::api::routes::handle_ping::handler))
         .nest_service("/assets", ServeDir::new(env_variables.assets_folder))
-        .route(
-            "/snap-shot",
-            post(lib::api::routes::handle_snapshot::handle_snapshot),
+        .nest("/api/jobs", handle_jobs::router())
+        .nest(
+            "/api/snap-shots",
+            lib::api::routes::handle_snapshot::router(),
         )
-        .route(
-            "/snap-shot",
-            get(lib::api::routes::snapshot_history::handle_get_snapshot_history),
-        )
-        .route(
-            "/snap-shot/:id",
-            get(lib::api::routes::handle_get_snapshot_by_id::handle_get_snapshot_by_id),
-        )
-        .route(
-            "/jobs/:id",
-            get(lib::api::routes::handle_get_job_by_id::handle_get_job_by_id),
-        )
-        .route(
-            "/jobs",
-            get(lib::api::routes::handle_get_all_running_jobs::handle_get_all_running_jobs),
-        )
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", doc))
         .with_state(app_state.clone())
 }

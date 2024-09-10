@@ -35,6 +35,6 @@ export const useIsFetchingSnapShotHistory = () => {
 };
 
 export async function fetchSnapShotHistory(): Promise<SnapShotHistoryResponse> {
-  const response = await fetch(`${API_BASE_URL}/snap-shot`);
+  const response = await fetch(`${API_BASE_URL}/snap-shots`);
   return response.json();
 }

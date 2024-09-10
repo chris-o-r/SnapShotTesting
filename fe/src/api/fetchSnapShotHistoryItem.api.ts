@@ -19,6 +19,6 @@ const fetchSnapShotHistoryItemQueryOptions = (id: string) => {
 export async function fetchSnapShotHistoryItem(
   id: string
 ): Promise<SnapShotHistoryResponse[number]> {
-  const response = await fetch(`${API_BASE_URL}/snap-shot/${id}`);
+  const response = await fetch(`${API_BASE_URL}/snap-shots/${id}`);
   return response.json();
 }

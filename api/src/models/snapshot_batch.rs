@@ -2,9 +2,11 @@ use crate::utils::{compare_images::CompareImagesReturn, date_format};
 use axum::{body::Body, http::Response, response::IntoResponse};
 use chrono::NaiveDateTime;
 use sqlx::{postgres::PgRow, Row};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, ToSchema)]
+
 pub struct SnapShotBatch {
     pub id: Uuid,
     pub name: String,

@@ -1,16 +1,22 @@
 use super::env_variables;
-use super::save_images;
 use anyhow::Error;
 use futures_util::{future::join_all, stream::FuturesUnordered};
 use image;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use tokio::task::{self};
+use utoipa::ToSchema;
 
 const DIFF_RATIO_THRESHOLD: f64 = 0.0001;
-const IMAGE_NOT_FOUND: &str = "not found";
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, PartialEq)]
+struct CategorizedImages {
+    created_images_paths: Vec<String>,
+    deleted_images_paths: Vec<String>,
+    diff_images_paths: Vec<(String, String)>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, ToSchema)]
 pub struct CompareImagesReturn {
     pub created_images_paths: Vec<String>,
     pub deleted_images_paths: Vec<String>,
@@ -26,41 +32,28 @@ pub async fn compare_images(
 
     let handles = FuturesUnordered::new();
 
-    let path_pairs = get_matching_path_pairs(image_paths_1, image_paths_2);
+    let categorized_images = categorize_images(image_paths_1, image_paths_2);
 
-    let random_folder_name: String =
-        format!("{}/{}", env_variables.assets_folder, random_folder_name);
+    let random_folder_name = format!("{}/{}", env_variables.assets_folder, random_folder_name);
 
-    fs::create_dir_all(&random_folder_name)?;
-    fs::create_dir_all(format!("{}/deleted", random_folder_name))?;
-    fs::create_dir_all(format!("{}/created", random_folder_name))?;
-    fs::create_dir_all(format!("{}/diff", random_folder_name))?;
+    create_folders(random_folder_name.as_str())?;
 
-    for chunk in path_pairs.chunks(4) {
+    for chunk in categorized_images.diff_images_paths.chunks(4) {
         let chunk: Vec<(String, String)> = chunk.to_vec();
         let random_folder_name = random_folder_name.clone(); // clone folder name for async block
         handles.push(task::spawn(compare_image_chunk(chunk, random_folder_name)));
     }
 
-    let mut result: CompareImagesReturn = CompareImagesReturn {
-        created_images_paths: Vec::new(),
-        deleted_images_paths: Vec::new(),
-        diff_images_paths: Vec::new(),
+    let result: CompareImagesReturn = CompareImagesReturn {
+        created_images_paths: categorized_images.created_images_paths,
+        deleted_images_paths: categorized_images.deleted_images_paths,
+        diff_images_paths: join_all(handles.into_iter())
+            .await
+            .into_iter()
+            .map(|handle| handle.unwrap())
+            .flat_map(|arr| arr.unwrap())
+            .collect(),
     };
-
-    join_all(handles.into_iter())
-        .await
-        .into_iter()
-        .for_each(|handle| {
-            let paths = handle.unwrap().unwrap();
-            result
-                .created_images_paths
-                .extend(paths.created_images_paths);
-            result
-                .deleted_images_paths
-                .extend(paths.deleted_images_paths);
-            result.diff_images_paths.extend(paths.diff_images_paths);
-        });
 
     Ok(result)
 }
@@ -68,99 +61,87 @@ pub async fn compare_images(
 async fn compare_image_chunk(
     chunk: Vec<(String, String)>,
     random_folder_name: String,
-) -> Result<CompareImagesReturn, Error> {
-    let mut created_images: Vec<String> = Vec::new();
-    let mut deleted_images: Vec<String> = Vec::new();
-    let mut diff_images: Vec<String> = Vec::new();
+) -> Result<Vec<String>, Error> {
+    let mut result = chunk.into_iter().map(|(image_1_path, image_2_path)| {
+        let image_1 = image::open(&image_1_path).unwrap();
+        let image_2 = image::open(&image_2_path).unwrap();
 
-    for (image_1_path, image_2_path) in chunk {
-        let is_image_created = image_2_path == IMAGE_NOT_FOUND && image_1_path != IMAGE_NOT_FOUND;
-        let is_image_deleted = image_2_path != IMAGE_NOT_FOUND && image_1_path == IMAGE_NOT_FOUND;
+        let ratio = diff_img::calculate_diff_ratio(image_1.clone(), image_2.clone());
 
-        if !is_image_created && !is_image_deleted {
-            match handle_compare_image(&image_1_path, &image_2_path, &random_folder_name)? {
-                Some(image_path) => diff_images.push(image_path),
-                None => (),
-            }
-        } else if is_image_created {
-            let created_image_path = handle_new_image(&image_1_path, &random_folder_name)?;
-            created_images.push(created_image_path);
-        } else if is_image_deleted {
-            let deleted_image_path = handle_deleted_image(&image_2_path, &random_folder_name)?;
-            deleted_images.push(deleted_image_path);
+        if ratio < DIFF_RATIO_THRESHOLD {
+            return Ok(None);
         }
+
+        let file_name = format!(
+            "{}/diff/{}",
+            random_folder_name,
+            image_1_path.split('/').last().unwrap()
+        );
+
+        let image_path =
+            diff_img::get_diff_from_images(image_1, image_2, &file_name, diff_img::BlendMode::HUE)
+                .map_err(|e| Error::msg(e.to_string()))?;
+
+        Ok(Some(image_path))
+    });
+
+    if result.any(|e: Result<Option<String>, Error>| e.is_err()) {
+        return Err(Error::msg("Error comparing images"));
     }
 
-    Ok(CompareImagesReturn {
+    Ok(result
+        .map(|r| r.unwrap())
+        .filter_map(|r| match r {
+            Some(path) => Some(path),
+            None => None,
+        })
+        .collect::<Vec<String>>())
+}
+
+fn categorize_images(image_paths_1: Vec<String>, image_paths_2: Vec<String>) -> CategorizedImages {
+    let mut created_images: Vec<String> = Vec::new();
+    let mut deleted_images: Vec<String> = Vec::new();
+    let mut diff_images: Vec<(String, String)> = Vec::new();
+
+    image_paths_1.clone().into_iter().for_each(|image_1| {
+        let image_2 = image_paths_2
+            .iter()
+            .find(|&r| r.split('/').last() == image_1.split('/').last());
+
+        match image_2 {
+            Some(image_2) => {
+                diff_images.push((image_1.clone(), image_2.clone()));
+            }
+            None => {
+                created_images.push(image_1.clone());
+            }
+        };
+    });
+
+    image_paths_2.into_iter().for_each(|image_2| {
+        let image_2_in_result = image_paths_1
+            .iter()
+            .find(|r| r.as_str().split('/').last() == image_2.as_str().split('/').last());
+
+        if image_2_in_result.is_none() {
+            deleted_images.push(image_2.clone());
+        }
+    });
+
+    CategorizedImages {
         created_images_paths: created_images,
         deleted_images_paths: deleted_images,
         diff_images_paths: diff_images,
-    })
-}
-
-fn get_matching_path_pairs(
-    image_paths_1: Vec<String>,
-    image_paths_2: Vec<String>,
-) -> Vec<(String, String)> {
-    image_paths_1
-        .into_iter()
-        .map(|image_1| {
-            let image_2 = image_paths_2
-                .iter()
-                .find(|&r| r.split('/').last() == image_1.split('/').last());
-            match image_2 {
-                Some(image_2) => (image_1, image_2.clone()),
-                None => (image_1, IMAGE_NOT_FOUND.to_string()),
-            }
-        })
-        .collect()
-}
-
-fn handle_compare_image(
-    image_1_path: &str,
-    image_2_path: &str,
-    random_folder_name: &str,
-) -> Result<Option<String>, Error> {
-    let image_1 = image::open(&image_1_path).unwrap();
-    let image_2 = image::open(&image_2_path).unwrap();
-
-    let ratio = diff_img::calculate_diff_ratio(image_1.clone(), image_2.clone());
-
-    if ratio < DIFF_RATIO_THRESHOLD {
-        return Ok(None);
     }
-
-    let file_name = format!(
-        "{}/diff/{}",
-        random_folder_name,
-        image_1_path.split('/').last().unwrap()
-    );
-
-    let image_path =
-        diff_img::get_diff_from_images(image_1, image_2, &file_name, diff_img::BlendMode::HUE)
-            .map_err(|e| Error::msg(e.to_string()))?;
-
-    Ok(Some(image_path))
 }
 
-fn handle_new_image(image_path: &str, random_folder_name: &str) -> Result<String, Error> {
-    let new_file_path = format!(
-        "{}/created/{}",
-        random_folder_name,
-        image_path.split('/').last().unwrap()
-    );
+fn create_folders(folder_name: &str) -> Result<(), Error> {
+    fs::create_dir_all(folder_name)?;
+    fs::create_dir_all(format!("{}/deleted", folder_name))?;
+    fs::create_dir_all(format!("{}/created", folder_name))?;
+    fs::create_dir_all(format!("{}/diff", folder_name))?;
 
-    save_images::safe_copy_image(&image_path, &new_file_path)
-}
-
-fn handle_deleted_image(image_path: &str, random_folder_name: &str) -> Result<String, Error> {
-    let new_file_path = format!(
-        "{}/deleted/{}",
-        random_folder_name,
-        image_path.split('/').last().unwrap()
-    );
-
-    save_images::safe_copy_image(image_path, &new_file_path)
+    Ok(())
 }
 
 #[cfg(test)]
@@ -168,70 +149,34 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_matching_paths() {
+    fn test_categorize_images() {
         let image_paths_1 = vec![
             "path/to/image1.jpg".to_string(),
             "path/to/image2.png".to_string(),
             "path/to/image3.gif".to_string(),
         ];
-        let image_paths_2 = vec![
+        let image_paths_2: Vec<String> = vec![
             "otherpath/image1.jpg".to_string(),
             "otherpath/image2.png".to_string(),
             "otherpath/image4.bmp".to_string(),
         ];
-        let expected_result = vec![
-            (
-                "path/to/image1.jpg".to_string(),
-                "otherpath/image1.jpg".to_string(),
-            ),
-            (
-                "path/to/image2.png".to_string(),
-                "otherpath/image2.png".to_string(),
-            ),
-            (
-                "path/to/image3.gif".to_string(),
-                IMAGE_NOT_FOUND.to_string(),
-            ),
-        ];
 
-        let result = get_matching_path_pairs(image_paths_1, image_paths_2);
+        let expected_result = CategorizedImages {
+            created_images_paths: vec!["path/to/image3.gif".to_string()],
+            deleted_images_paths: vec!["otherpath/image4.bmp".to_string()],
+            diff_images_paths: vec![
+                (
+                    "path/to/image1.jpg".to_string(),
+                    "otherpath/image1.jpg".to_string(),
+                ),
+                (
+                    "path/to/image2.png".to_string(),
+                    "otherpath/image2.png".to_string(),
+                ),
+            ],
+        };
 
-        assert_eq!(result, expected_result);
-    }
-
-    #[test]
-    fn test_no_matching_paths() {
-        let image_paths_1 = vec![
-            "path/to/image1.jpg".to_string(),
-            "path/to/image2.png".to_string(),
-        ];
-        let image_paths_2 = vec![
-            "otherpath/image3.jpg".to_string(),
-            "otherpath/image4.png".to_string(),
-        ];
-        let expected_result = vec![
-            (
-                "path/to/image1.jpg".to_string(),
-                IMAGE_NOT_FOUND.to_string(),
-            ),
-            (
-                "path/to/image2.png".to_string(),
-                IMAGE_NOT_FOUND.to_string(),
-            ),
-        ];
-
-        let result = get_matching_path_pairs(image_paths_1, image_paths_2);
-
-        assert_eq!(result, expected_result);
-    }
-
-    #[test]
-    fn test_empty_paths() {
-        let image_paths_1: Vec<String> = Vec::new();
-        let image_paths_2: Vec<String> = Vec::new();
-        let expected_result: Vec<(String, String)> = Vec::new();
-
-        let result = get_matching_path_pairs(image_paths_1, image_paths_2);
+        let result = categorize_images(image_paths_1, image_paths_2);
 
         assert_eq!(result, expected_result);
     }
