@@ -1,21 +1,10 @@
 import { useQuery, queryOptions, useIsFetching } from "@tanstack/react-query";
 import { API_BASE_URL } from "../constants";
 import { QUERY_KEYS } from "./constants";
+import { operations } from "@/types/generated";
 
-export type SnapShotHistoryResponse = {
-  id: string;
-  name: string;
-  created_at: string;
-  new_story_book_version: string;
-  old_story_book_version: string;
-  new_images_paths: string[];
-  old_images_paths: string[];
-  diff_images_paths: {
-    created_images_paths: string[];
-    deleted_images_paths: string[];
-    diff_images_paths: string[];
-  };
-}[];
+export type SnapShotHistoryResponse =
+  operations["handle_get_snapshot_history"]["responses"]["200"]["content"]["application/json"];
 
 export const useFetchSnapShotHistory = () => {
   return useQuery(fetchSnapShotHistoryQueryOptions());
