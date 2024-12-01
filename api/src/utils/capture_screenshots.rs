@@ -38,7 +38,9 @@ pub async fn capture_screenshots(
     let handles = FuturesUnordered::new();
     let mut results: Vec<Result<String, Error>> = vec![];
 
-    for chunk in urls.chunks(*SELENIUM_MAX_INSTANCES) {
+    let chunk_size = urls.len() / *SELENIUM_MAX_INSTANCES;
+
+    for chunk in urls.chunks(chunk_size) {
         let chunk = chunk.to_vec();
         let random_folder_name = random_folder_name.to_string();
 
@@ -75,7 +77,11 @@ async fn take_screenshots(
     random_folder_name: String,
 ) -> Result<Vec<Result<RawImage, Error>>, Error> {
     let mut raw_images: Vec<Result<RawImage, Error>> = vec![];
-    let client: Client = connect().await?;
+    tracing::info!("Connecting to selenium");
+    let client: Client = connect().await.map_err(|err| {
+        tracing::error!("Unable to connect to selenium{}", err.to_string());
+        err
+    })?;
 
     for url in params.into_iter() {
         let folder_name = format!("{}/{}", random_folder_name, &url.folder);
@@ -89,6 +95,7 @@ async fn take_screenshots(
                     folder: folder_name.to_string(),
                     image_name: url.id.to_string(),
                 }));
+
             }
             Err(e) => {
                 tracing::error!("Error capturing screenshot: {}", e);
@@ -106,14 +113,23 @@ async fn capture_screenshot_from_url(client: &Client, url: &str) -> Result<Vec<u
     const TIME_OUT: Duration = std::time::Duration::from_secs(5);
     const INTERVAL: Duration = std::time::Duration::from_millis(500);
 
-    client.goto(url).await?;
+    client.goto(url).await.map_err(|err| {
+        tracing::error!("Unable to go to URL {} to take screen shot\n{}", url, err);
+        err
+    })?;
+
 
     client
         .wait()
         .at_most(TIME_OUT)
         .every(INTERVAL)
         .for_element(fantoccini::Locator::XPath("/html/body/div[5]/*"))
-        .await?;
+        .await.map_err(
+            |err|  {
+                tracing::error!("Unable to find component {}", err.to_string());
+                err
+            }
+        )?;
 
     let screenshot = client
         .find(fantoccini::Locator::XPath("/html"))
@@ -121,6 +137,8 @@ async fn capture_screenshot_from_url(client: &Client, url: &str) -> Result<Vec<u
         .unwrap()
         .screenshot()
         .await?;
+
+    tracing::info!("Captured sceen shot for {}", url);
 
     Ok(screenshot)
 }
