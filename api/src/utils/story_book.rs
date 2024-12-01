@@ -36,8 +36,11 @@ pub async fn get_screenshot_params_by_url(
     url: &str,
     folder_name: &str,
 ) -> Result<Vec<ScreenShotParams>, Error> {
-    let story_book_config = get_story_book_config(url).await?;
-
+    let story_book_config = get_story_book_config(url).await.map_err(|err| {
+        tracing::error!("Failed to get story book config for url {}\n{}", url, err);
+        err
+    })?;
+    
     let config_filtered = story_book_config
         .entries
         .into_iter()
