@@ -33,4 +33,8 @@ pub async fn update_job_status(
     Ok(())
 }
 
-
+pub async fn clear_all_runnning_jobs(
+    redis_pool: bb8_redis::bb8::Pool<bb8_redis::RedisConnectionManager>,
+) -> Result<usize, Error> {
+    snapshot_batch_job_store::remove_all_jobs(&redis_pool).await
+}
