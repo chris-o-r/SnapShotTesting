@@ -30,9 +30,11 @@ export default function CompareImagesHistoricalList() {
         <Sider>
           <Navigation />
         </Sider>
-        <Content>
+        <Content className="p-4">
+        <h2 className='text-2xl font-semibold'>Historical Jobs</h2>
+
           <Loadable isLoading={isLoading}>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="h-max grid grid-flow-row grid-cols-4 gap-4">
               {history?.map((item) => (
                 <Link id={item.id} to={`${item.id}`} key={item.id}>
                   <Card key={item.id} title={item.name} hoverable>
