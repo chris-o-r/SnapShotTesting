@@ -19,8 +19,9 @@ export default function Jobs() {
           <Navigation />
         </Sider>
         <Content>
+          <h2>Running Jobs</h2>
           <Loadable isLoading={isLoading}>
-            <div className="p-4 h-max grid grid-flow-col grid-cols-4 gap-4">
+            <div className="p-4 h-max grid grid-flow-row grid-cols-4 gap-4">
               {jobs?.map((item) => (
                 <Link id={item.id} to={`${item.id}`} key={item.id}>
                   <Card key={item.id} title={item.id} hoverable>
