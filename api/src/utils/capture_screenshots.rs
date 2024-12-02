@@ -103,14 +103,14 @@ async fn take_screenshots(
             }
         }
     }
-
+    
     client.close().await?;
 
     Ok(raw_images)
 }
 
 async fn capture_screenshot_from_url(client: &Client, url: &str) -> Result<Vec<u8>, Error> {
-    const TIME_OUT: Duration = std::time::Duration::from_secs(5);
+    const TIME_OUT: Duration = std::time::Duration::from_secs(2);
     const INTERVAL: Duration = std::time::Duration::from_millis(500);
 
     client.goto(url).await.map_err(|err| {
@@ -126,7 +126,7 @@ async fn capture_screenshot_from_url(client: &Client, url: &str) -> Result<Vec<u
         .for_element(fantoccini::Locator::XPath("/html/body/div[5]/*"))
         .await.map_err(
             |err|  {
-                tracing::error!("Unable to find component {}", err.to_string());
+                tracing::error!("Unable to find component\n{}", err.to_string());
                 err
             }
         )?;
