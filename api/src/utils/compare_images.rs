@@ -78,9 +78,13 @@ async fn compare_image_chunk(
             image_1_path.split('/').last().unwrap()
         );
 
+
         let image_path =
             diff_img::get_diff_from_images(image_1, image_2, &file_name, diff_img::BlendMode::HUE)
-                .map_err(|e| Error::msg(e.to_string()))?;
+                .map_err(|e| {
+                    tracing::error!("Error comparing images \nimage one: {} \nimage two: {}", image_1_path, image_2_path );
+                    Error::msg(e.to_string())
+                })?;
 
         Ok(Some(image_path))
     });

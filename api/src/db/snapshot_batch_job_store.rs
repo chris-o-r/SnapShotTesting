@@ -7,8 +7,7 @@ pub async fn insert_snapshot_batch_job(
     pool: &Pool<RedisConnectionManager>,
     snap_shot_batch_job: SnapShotBatchJob,
 ) -> Result<SnapShotBatchJob, anyhow::Error> {
-    let mut conn: bb8_redis::bb8::PooledConnection<RedisConnectionManager> =
-        pool.get().await.unwrap();
+    let mut conn: bb8_redis::bb8::PooledConnection<RedisConnectionManager> = pool.get().await?;
 
     let key = format!("{}:{}", REDIS_KEY, snap_shot_batch_job.id);
     let value = serde_json::to_string(&snap_shot_batch_job)?;
@@ -61,7 +60,7 @@ pub async fn get_all_jobs(
     pool: &Pool<RedisConnectionManager>,
 ) -> Result<Vec<SnapShotBatchJob>, anyhow::Error> {
     let mut jobs = Vec::new();
-    let mut conn = pool.get().await?;
+    let mut conn: bb8_redis::bb8::PooledConnection<'_, RedisConnectionManager> = pool.get().await?;
 
     let keys: Vec<String> = redis::cmd("KEYS")
         .arg(format!("{}:*", REDIS_KEY))
@@ -77,17 +76,21 @@ pub async fn get_all_jobs(
     Ok(jobs)
 }
 
-pub async fn remove_all_jobs(pool: &Pool<RedisConnectionManager>) -> Result<(), anyhow::Error> {
-    let mut conn = pool.get().await?;
+pub async fn remove_all_jobs(pool: &Pool<RedisConnectionManager>) -> Result<usize, anyhow::Error> {
+    let mut conn: bb8_redis::bb8::PooledConnection<'_, RedisConnectionManager> =
+        pool.get().await.map_err(|err| {
+            tracing::error!("Unable to connect to redis pool\n{}", err);
+            err
+        })?;
+
     let keys: Vec<String> = redis::cmd("KEYS")
         .arg(format!("{}:*", REDIS_KEY))
         .query_async(&mut *conn)
         .await?;
 
-    println!("Keys: {:?}", keys);
-    for key in keys {
-        let _: () = cmd("DEL").arg(key).query_async(&mut *conn).await?;
+    if !keys.is_empty() {
+        let _res: bool = redis::cmd("DEL").arg(&keys).query_async(&mut *conn).await?;
     }
 
-    Ok(())
+    Ok(keys.len())
 }
