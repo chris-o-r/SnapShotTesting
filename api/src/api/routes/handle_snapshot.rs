@@ -1,6 +1,7 @@
 use anyhow::Error;
 use axum::http::StatusCode;
 use axum::{routing, Json, Router};
+use regex::Regex;
 use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::{OpenApi, ToSchema};
@@ -50,25 +51,8 @@ pub async fn handle_snapshot(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<SnapShotParams>,
 ) -> Result<SnapShotBatch, AppError> {
-    let new = match payload.new {
-        Some(new) => new,
-        None => {
-            return Err(AppError(
-                Error::msg("New URL is required"),
-                StatusCode::BAD_REQUEST,
-            ))
-        }
-    };
 
-    let old = match payload.old {
-        Some(old) => old,
-        None => {
-            return Err(AppError(
-                Error::msg("New URL is required"),
-                StatusCode::BAD_REQUEST,
-            ));
-        }
-    };
+    let (new, old) = validate_payload(payload)?;
 
     snapshot_service::create_snap_shots(
         new.as_str(),
@@ -124,4 +108,49 @@ async fn handle_get_snapshot_by_id(
             axum::http::StatusCode::NOT_FOUND,
         ));
     }
+}
+
+
+fn validate_payload(snap_shot_param: SnapShotParams) -> Result<(String, String), AppError> {
+    
+    let domain_regex = Regex::new(r"^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:/.*)?$").unwrap();
+
+
+    let new = match snap_shot_param.new {
+        Some(new) => new,
+        None => {
+            return Err(AppError(
+                Error::msg("New URL is required"),
+                StatusCode::BAD_REQUEST,
+            ))
+        }
+    };
+
+    let old = match snap_shot_param.old {
+        Some(old) => old,
+        None => {
+            return Err(AppError(
+                Error::msg("New URL is required"),
+                StatusCode::BAD_REQUEST,
+            ));
+        }
+    };
+
+    if !domain_regex.is_match(&new) {
+        return Err(AppError(
+            Error::msg("Incorrect format for new url"),
+            StatusCode::BAD_REQUEST,
+        ))
+    }
+
+    if !domain_regex.is_match(&old) {
+        return Err(AppError(
+            Error::msg("Incorrect format for old url"),
+            StatusCode::BAD_REQUEST,
+        ))
+    }
+
+
+    Ok((new, old))
+
 }
