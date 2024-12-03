@@ -23,14 +23,6 @@ pub struct StoryBookConfigEntry {
     pub r#type: String,
 }
 
-pub async fn get_story_book_config(url: &str) -> Result<StoryBookConfig, Error> {
-    let response: reqwest::Response = reqwest::get(format!("http://{}/index.json", url)).await?;
-    let body = response.text().await?;
-
-    let config: StoryBookConfig = serde_json::from_str(body.as_str())?;
-
-    Ok(config)
-}
 
 pub async fn get_screenshot_params_by_url(
     url: &str,
@@ -38,9 +30,10 @@ pub async fn get_screenshot_params_by_url(
 ) -> Result<Vec<ScreenShotParams>, Error> {
     let story_book_config = get_story_book_config(url).await.map_err(|err| {
         tracing::error!("Failed to get story book config for url {}\n{}", url, err);
-        err
+        anyhow::Error::msg(format!("Failed to find story book config at: {}", url))
+
     })?;
-    
+
     let config_filtered = story_book_config
         .entries
         .into_iter()
@@ -56,6 +49,16 @@ pub async fn get_screenshot_params_by_url(
         folder_name,
     ))
 }
+
+async fn get_story_book_config(url: &str) -> Result<StoryBookConfig, Error> {
+    let response: reqwest::Response = reqwest::get(format!("http://{}/index.json", url)).await?;
+    let body = response.text().await?;
+
+    let config: StoryBookConfig = serde_json::from_str(body.as_str())?;
+
+    Ok(config)
+}
+
 
 fn get_screen_shot_params_from_config(
     config: StoryBookConfig,
