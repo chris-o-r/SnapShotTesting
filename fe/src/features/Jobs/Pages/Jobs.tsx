@@ -1,6 +1,7 @@
 import { useFetchRunningJobs } from "@/api/jobs.api";
 import Loadable from "@/components/Loader";
 import Navigation from "@/components/Navigation";
+import { formatDateTime } from "@/utils/formatDateTime";
 import { Layout, Card, Progress } from "antd";
 import Sider from "antd/es/layout/Sider";
 import { Header, Content } from "antd/es/layout/layout";
@@ -21,7 +22,7 @@ export default function Jobs() {
         <Content className="p-4 space-y-4">
           <h2 className='text-2xl font-semibold'>Running Jobs</h2>
           <Loadable isLoading={isLoading}>
-            <div className="h-max grid grid-flow-row grid-cols-4 gap-4">
+            <div className="h-max grid grid-flow-row md:grid-cols-4 grid-cols-2 gap-4">
               {jobs?.map((item) => (
                 <Link id={item.id} to={`${item.id}`} key={item.id}>
                   <Card key={item.id} title={item.id} hoverable>
@@ -32,7 +33,7 @@ export default function Jobs() {
                       <b>Status:</b> {item.status}
                     </p>
                     <p>
-                      <b>Created At:</b> {item.created_at}
+                      <b>Created At:</b> {formatDateTime(new Date(item.created_at))}
                     </p>
                     <p>
                       <b>Updated At:</b> {item.updated_at}

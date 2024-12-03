@@ -7,7 +7,7 @@ import { Content, Header } from "antd/es/layout/layout";
 import Sider from "antd/es/layout/Sider";
 import Navigation from "@/components/Navigation";
 import Loadable from "@/components/Loader";
-
+import {formatDateTime} from '@/utils/formatDateTime'
 export default function CompareImagesHistoricalList() {
   const {
     data: history,
@@ -21,6 +21,10 @@ export default function CompareImagesHistoricalList() {
     }
   }, [isFetchHistoryError]);
 
+  const formatUrl = (str: string) => {
+    return `https://${str}`
+  }
+
   return (
     <>
       <Header style={{ display: "flex", color: "white", alignItems: "center" }}>
@@ -31,24 +35,22 @@ export default function CompareImagesHistoricalList() {
           <Navigation />
         </Sider>
         <Content className="p-4 space-y-4">
-        <h2 className='text-2xl font-semibold'>Historical Jobs</h2>
+          <h2 className="text-2xl font-semibold">Historical Jobs</h2>
 
           <Loadable isLoading={isLoading}>
-            <div className="h-max grid grid-flow-row grid-cols-4 gap-4">
+            <div className="h-max grid grid-flow-row md:grid-cols-4 grid-cols-2 gap-4">
               {history?.map((item) => (
                 <Link id={item.id} to={`${item.id}`} key={item.id}>
                   <Card key={item.id} title={item.name} hoverable>
-                    <p>
-                      <b>URL Old:</b> {item.old_story_book_version}
-                    </p>
-                    <p>
-                      <b>URL New:</b>
-                      {item.new_story_book_version}
-                    </p>
-                    <p>
-                      <b>Created At:</b>
-                      {item.created_at}
-                    </p>
+                    <div className="flex flex-col space-y-1">
+                      <a className="underline" href={formatUrl(item.old_story_book_version)}><b>Old URL</b></a>
+                      <a className="underline" href={formatUrl(item.new_story_book_version)}><b>New URL</b></a>
+                    <span>
+                      <b>Created At: </b>
+                      {formatDateTime(new Date(item.created_at))}
+                    </span>
+
+                    </div>
                   </Card>
                 </Link>
               ))}
