@@ -77,7 +77,7 @@ async fn take_screenshots(
     random_folder_name: String,
 ) -> Result<Vec<Result<RawImage, Error>>, Error> {
     let mut raw_images: Vec<Result<RawImage, Error>> = vec![];
-    tracing::info!("Connecting to selenium");
+    tracing::debug!("Connecting to selenium");
     let client: Client = connect().await.map_err(|err| {
         tracing::error!("Unable to connect to selenium{}", err.to_string());
         err
@@ -110,7 +110,7 @@ async fn take_screenshots(
 }
 
 async fn capture_screenshot_from_url(client: &Client, url: &str) -> Result<Vec<u8>, Error> {
-    const TIME_OUT: Duration = std::time::Duration::from_secs(2);
+    const TIME_OUT: Duration = std::time::Duration::from_secs(5);
     const INTERVAL: Duration = std::time::Duration::from_millis(500);
 
     client.goto(url).await.map_err(|err| {
@@ -138,7 +138,7 @@ async fn capture_screenshot_from_url(client: &Client, url: &str) -> Result<Vec<u
         .screenshot()
         .await?;
 
-    tracing::info!("Captured sceen shot for {}", url);
+    tracing::debug!("Captured sceen shot for {}", url);
 
     Ok(screenshot)
 }

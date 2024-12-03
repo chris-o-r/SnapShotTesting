@@ -59,15 +59,33 @@ pub async fn create_snap_shots(
         &batch.id.clone(),
     );
 
-    let images_1: Vec<Result<String, Error>> =
-        handle_snap_shot_for_url(&new_url, &random_folder_name.as_str(), "new").await?;
+    let images_1: Vec<Result<String, Error>> = match handle_snap_shot_for_url(&new_url, &random_folder_name.as_str(), "new").await {
+        Ok(res) => res, 
+        Err(err) => {
+            job.updated_at = Utc::now().naive_utc();
+            job.status = SnapShotBatchJobStatus::Failed;
+            snapshot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
+
+            return Err(err);
+        } 
+    };
+        
 
     job.updated_at = Utc::now().naive_utc();
     job.progress = 0.4;
     snapshot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
 
-    let images_2: Vec<Result<String, Error>> =
-        handle_snap_shot_for_url(&old_url, random_folder_name.as_str(), "old").await?;
+    let images_2: Vec<Result<String, Error>> = match
+        handle_snap_shot_for_url(&old_url, random_folder_name.as_str(), "old").await {
+            Ok(res) => res,
+            Err(err) => {
+                job.updated_at = Utc::now().naive_utc();
+                job.status = SnapShotBatchJobStatus::Failed;
+                snapshot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
+    
+                return Err(err);
+            }
+        };
 
     job.updated_at = Utc::now().naive_utc();
     job.progress = 0.7;
@@ -103,12 +121,21 @@ pub async fn create_snap_shots(
         });
 
     tracing::info!("Comparing images");
-    let diff_images = compare_images::compare_images(
+    let diff_images = match compare_images::compare_images(
         images_1_cleaned.clone(),
         images_2_cleaned.clone(),
         random_folder_name.as_str(),
     )
-    .await?;
+    .await {
+        Ok(res) => res, 
+        Err(err) => {
+            job.updated_at = Utc::now().naive_utc();
+            job.status = SnapShotBatchJobStatus::Failed;
+            snapshot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
+
+            return Err(err);
+        }
+    };
 
     let snap_shots = create_snapshot_array(
         diff_images.clone(),
@@ -210,7 +237,7 @@ async fn handle_snap_shot_for_url(
     random_folder_name: &str,
     param_name: &str,
 ) -> Result<Vec<Result<String, Error>>, Error> {
-    tracing::info!("Capturing screen shots for url: {}", url);
+    tracing::debug!("Capturing screen shots for url: {}", url);
 
     let image_params = get_screenshot_params_by_url(url, param_name).await?;
 
@@ -218,7 +245,7 @@ async fn handle_snap_shot_for_url(
         capture_screenshots::capture_screenshots(&image_params, random_folder_name).await?;
 
     let num_ok_results = results.iter().filter(|r| r.is_ok()).count();
-    tracing::info!(
+    tracing::debug!(
         "Captured {}/{} for url {}",
         num_ok_results,
         image_params.len(),
