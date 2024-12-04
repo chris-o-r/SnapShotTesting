@@ -11,6 +11,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import CompareImagesHistoricalList from "./features/CompareImagesHistoricalList/pages/CompareImagesHistoricalList";
 import Jobs from "./features/Jobs/Pages/Jobs";
+import { AdminPage } from "./features/Admin/Page/AdminPage";
 
 export const QueryClient = new RQQueryClient({
   defaultOptions: {
@@ -33,6 +34,7 @@ export default function App() {
           <Routes>
             <Route path="/">
               <Route index element={<StartPage />} />
+              <Route path="/admin" element={<AdminPage />} />
               <Route path="/jobs" element={<Jobs />} />
               <Route
                 path="/compare/historical"

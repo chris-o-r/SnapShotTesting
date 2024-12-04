@@ -2,6 +2,7 @@ import {
   DeliveredProcedureOutlined,
   HistoryOutlined,
   HomeOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import { Menu } from "antd";
 import { MenuItemType } from "antd/es/menu/interface";
@@ -33,6 +34,13 @@ export default function Navigation() {
       href: "/jobs",
       icon: <DeliveredProcedureOutlined />,
       onClick: () => navigate("/jobs"),
+    },
+    {
+      label: "Admin",
+      key: "4",
+      href: "/admin",
+      icon: <SettingOutlined />,
+      onClick: () => navigate("/admin"),
     },
   ];
   const pathName = window.location.pathname;
