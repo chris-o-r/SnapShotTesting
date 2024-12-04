@@ -61,6 +61,7 @@ services:
       - ../postrgress/pgdata:/var/lib/postgresql/data
   selenium:
     image: selenium/standalone-chrome:latest # Using the specified image
+    platform: linux/x86_64
     shm_size: "4g" # Shared memory size
     dns:
       - 8.8.8.8 # DNS settings
@@ -70,3 +71,4 @@ services:
     environment:
       - SE_NODE_MAX_SESSIONS=5
       - SE_NODE_OVERRIDE_MAX_SESSIONS=false
+      - SE_SCREEN_DPI=100

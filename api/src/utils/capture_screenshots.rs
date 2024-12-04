@@ -104,7 +104,6 @@ async fn take_screenshots(
         }
     }
     
-    client.close().await?;
 
     Ok(raw_images)
 }
@@ -137,7 +136,7 @@ async fn capture_screenshot_from_url(client: &Client, url: &str) -> Result<Vec<u
         .unwrap()
         .screenshot()
         .await?;
-
+  
     tracing::debug!("Captured sceen shot for {}", url);
 
     Ok(screenshot)

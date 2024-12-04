@@ -1,13 +1,14 @@
 use super::env_variables;
-use anyhow::Error;
 use futures_util::{future::join_all, stream::FuturesUnordered};
-use image;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use tokio::task::{self};
 use utoipa::ToSchema;
 
 const DIFF_RATIO_THRESHOLD: f64 = 0.0001;
+
+static RATE: f32 = 100.0 / 256.0;
+
 
 #[derive(Debug, PartialEq)]
 struct CategorizedImages {
@@ -27,7 +28,7 @@ pub async fn compare_images(
     image_paths_1: Vec<String>,
     image_paths_2: Vec<String>,
     random_folder_name: &str,
-) -> Result<CompareImagesReturn, Error> {
+) -> Result<CompareImagesReturn, anyhow::Error> {
     let env_variables = env_variables::EnvVariables::new();
 
     let handles = FuturesUnordered::new();
@@ -38,7 +39,8 @@ pub async fn compare_images(
 
     create_folders(random_folder_name.as_str())?;
 
-    for chunk in categorized_images.diff_images_paths.chunks(4) {
+
+    for chunk in categorized_images.diff_images_paths.chunks(categorized_images.diff_images_paths.len() / 1) {
         let chunk: Vec<(String, String)> = chunk.to_vec();
         let random_folder_name = random_folder_name.clone(); // clone folder name for async block
         handles.push(task::spawn(compare_image_chunk(chunk, random_folder_name)));
@@ -54,52 +56,64 @@ pub async fn compare_images(
             .flat_map(|arr| arr.unwrap())
             .collect(),
     };
-
+    
     Ok(result)
 }
 
 async fn compare_image_chunk(
     chunk: Vec<(String, String)>,
     random_folder_name: String,
-) -> Result<Vec<String>, Error> {
-    let mut result = chunk.into_iter().map(|(image_1_path, image_2_path)| {
-        let image_1 = image::open(&image_1_path).unwrap();
-        let image_2 = image::open(&image_2_path).unwrap();
+) -> Result<Vec<String>, anyhow::Error> {
+    let result = chunk.into_iter().map(|(image_1_path, image_2_path)| {
+        let image_result: Result<Option<String>, anyhow::Error> = (|| {
+            let mut image_1 = image::open(&image_1_path)
+                .map_err(|_| anyhow::Error::msg(format!("Failed to open image: {}", image_1_path)))?;
+            let mut image_2 = image::open(&image_2_path)
+                .map_err(|_| anyhow::Error::msg(format!("Failed to open image: {}", image_2_path)))?;
 
-        let ratio = diff_img::calculate_diff_ratio(image_1.clone(), image_2.clone());
+            let ratio = lcs_image_diff::calculate_diff_ratio(image_1.clone(), image_2.clone());
 
-        if ratio < DIFF_RATIO_THRESHOLD {
-            return Ok(None);
-        }
+            if ratio < DIFF_RATIO_THRESHOLD {
+                return Ok(None);
+            }
 
-        let file_name = format!(
-            "{}/diff/{}",
-            random_folder_name,
-            image_1_path.split('/').last().unwrap()
-        );
+            let file_name = format!(
+                "{}/diff/{}",
+                &random_folder_name,
+                image_1_path.split('/').last().unwrap()
+            );
 
+            let image = lcs_image_diff::compare(&mut image_1, &mut image_2, RATE).map_err(|e| {
+                tracing::error!(
+                    "Error comparing images \nimage one: {} \nimage two: {}",
+                    image_1_path,
+                    image_2_path
+                );
+                anyhow::Error::msg(e.to_string())
+            })?;
 
-        let image_path =
-            diff_img::get_diff_from_images(image_1, image_2, &file_name, diff_img::BlendMode::HUE)
-                .map_err(|e| {
-                    tracing::error!("Error comparing images \nimage one: {} \nimage two: {}", image_1_path, image_2_path );
-                    Error::msg(e.to_string())
-                })?;
+            image.save(&file_name).map_err(|_| {
+                tracing::error!("Unable to save image");
+                anyhow::Error::msg("Unable to save image")
+            })?;
 
-        Ok(Some(image_path))
+            Ok(Some(file_name))
+        })();
+
+        image_result
     });
 
-    if result.any(|e: Result<Option<String>, Error>| e.is_err()) {
-        return Err(Error::msg("Error comparing images"));
-    }
+    let filtered_result = result.filter_map(|img_result| match img_result {
+        Ok(Some(res)) => Some(res),
+        Ok(None) => None,
+        Err(e) => {
+            tracing::error!("Error processing image: {}", e);
+            None
+        }
+    }).collect::<Vec<String>>();
 
-    Ok(result
-        .map(|r| r.unwrap())
-        .filter_map(|r| match r {
-            Some(path) => Some(path),
-            None => None,
-        })
-        .collect::<Vec<String>>())
+    Ok(filtered_result)
+
 }
 
 fn categorize_images(image_paths_1: Vec<String>, image_paths_2: Vec<String>) -> CategorizedImages {
@@ -139,7 +153,7 @@ fn categorize_images(image_paths_1: Vec<String>, image_paths_2: Vec<String>) -> 
     }
 }
 
-fn create_folders(folder_name: &str) -> Result<(), Error> {
+fn create_folders(folder_name: &str) -> Result<(), anyhow::Error> {
     fs::create_dir_all(folder_name)?;
     fs::create_dir_all(format!("{}/deleted", folder_name))?;
     fs::create_dir_all(format!("{}/created", folder_name))?;
