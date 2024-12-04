@@ -9,6 +9,8 @@ const DIFF_RATIO_THRESHOLD: f64 = 0.0001;
 
 static RATE: f32 = 100.0 / 256.0;
 
+static NUM_THREADS: usize = 6;
+
 
 #[derive(Debug, PartialEq)]
 struct CategorizedImages {
@@ -40,7 +42,7 @@ pub async fn compare_images(
     create_folders(random_folder_name.as_str())?;
 
 
-    for chunk in categorized_images.diff_images_paths.chunks(categorized_images.diff_images_paths.len() / 1) {
+    for chunk in categorized_images.diff_images_paths.chunks(categorized_images.diff_images_paths.len() / NUM_THREADS) {
         let chunk: Vec<(String, String)> = chunk.to_vec();
         let random_folder_name = random_folder_name.clone(); // clone folder name for async block
         handles.push(task::spawn(compare_image_chunk(chunk, random_folder_name)));

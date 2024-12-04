@@ -84,3 +84,7 @@ fn create_snapshot_batch_from_dto(
 
     snap_shot_batch
 }
+
+pub async fn delete_all_batches(db_pool: sqlx::Pool<sqlx::Postgres>) -> Result<(), anyhow::Error>{
+    snap_shot_batch_store::delete_all_snapshot_batches(&db_pool).await
+}

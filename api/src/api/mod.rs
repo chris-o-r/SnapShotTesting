@@ -88,6 +88,7 @@ fn create_routes(app_state: Arc<AppState>) -> Router {
         .nest_service("/api/assets", ServeDir::new(env_variables.assets_folder))
         .nest("/api/jobs", handle_jobs::router())
         .nest("/api/snap-shots", routes::handle_snapshot::router())
+        .nest("/api/admin", routes::handle_admin::router())
         .merge(
             SwaggerUi::new("/swagger-ui")
                 .url("/api-docs/openapi.json", swagger_config::generate_doc()),

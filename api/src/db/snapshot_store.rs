@@ -81,3 +81,19 @@ pub async fn get_all_snapshots_by_batch_id(
 
     Ok(snap_shots)
 }
+
+pub async fn delete_all_snapshots(pool: &Pool<Postgres>) -> Result<(), anyhow::Error> {
+    let sql = r"
+    DELETE FROM snap_shots
+    ";
+
+    sqlx::query(sql)
+        .execute(pool)
+        .await
+        .map_err(|err| {
+            tracing::error!("Cannot delete all snapshots [{}]", err.to_string());
+            anyhow::Error::from(err)
+        })?;
+
+    Ok(())
+}
