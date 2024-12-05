@@ -19,7 +19,7 @@ export function getMenuItemsHistoricalPage(
         {
           label: "Created",
           key: "diff_images_paths_created",
-          children: data.diff_images_paths.created_images_paths.map((item) => {
+          children: data.created_image_paths.map((item) => {
             return {
               key: item,
               label: item,
@@ -29,7 +29,7 @@ export function getMenuItemsHistoricalPage(
         {
           label: "Deleted",
           key: "diff_images_paths_deleted",
-          children: data.diff_images_paths.deleted_images_paths.map((item) => {
+          children: data.deleted_image_paths.map((item) => {
             return {
               key: item,
               label: item,
@@ -39,36 +39,16 @@ export function getMenuItemsHistoricalPage(
         {
           label: "Changed",
           key: "diff_images_paths_diff",
-          children: data.diff_images_paths.diff_images_paths.map((item) => {
+          children: data.diff_image.map((item) => {
             return {
-              key: item,
-              label: item,
+              key: item.diff,
+              label: item.diff,
             };
           }),
         },
       ],
-    },
-
-    {
-      label: getTitle("new_images_paths"),
-      key: "new_images_paths",
-      children: data.new_images_paths.map((item) => {
-        return {
-          key: item,
-          label: item,
-        };
-      }),
-    },
-    {
-      label: getTitle("old_images_paths"),
-      key: "old_images_paths",
-      children: data.old_images_paths.map((item) => {
-        return {
-          key: item,
-          label: item,
-        };
-      }),
-    },
+    }
+    
   ];
 }
 

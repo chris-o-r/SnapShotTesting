@@ -30,7 +30,6 @@ export default function App() {
         persistOptions={{ persister }}
       >
         <ToastContainer />
-        <Layout style={{ minHeight: "100vh" }}>
           <Routes>
             <Route path="/">
               <Route index element={<StartPage />} />
@@ -47,7 +46,6 @@ export default function App() {
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
-        </Layout>
       </PersistQueryClientProvider>
     </ErrorBoundary>
   );
