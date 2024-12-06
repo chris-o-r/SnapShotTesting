@@ -153,6 +153,8 @@ pub async fn create_snap_shots(
     job.updated_at = Utc::now().naive_utc();
     snapshot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
 
+    snapshot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
+
     Ok(SnapShotBatch {
         id: batch.id,
         name: batch.name,
@@ -224,7 +226,7 @@ fn paths_to_snap_shot(
         .map(|path| SnapShot {
             id: Uuid::new_v4(),
             batch_id: batch_id.clone(),
-            name: path.clone(),
+            name: path.clone().split('/').last().unwrap().to_string(),
             path: path.replace(&asset_folder, "assets"),
             snap_shot_type: snap_shot_type.clone(),
             created_at: created_at,

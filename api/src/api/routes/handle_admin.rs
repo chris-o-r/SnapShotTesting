@@ -6,7 +6,7 @@ use axum::{
 };
 use reqwest::StatusCode;
 
-use utoipa::{OpenApi, ToSchema};
+use utoipa::OpenApi;
 
 use crate::{
     api::errors::AppError,

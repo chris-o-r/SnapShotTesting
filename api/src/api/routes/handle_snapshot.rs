@@ -10,6 +10,7 @@ use uuid::Uuid;
 use crate::api::errors::AppError;
 use crate::models::app_state::AppState;
 use crate::models::snapshot_batch::SnapShotBatch;
+use crate::models::snapshot_batch_v2::{DiffImage, SnapShotBatchV2};
 use crate::service::{snapshot_history_service, snapshot_service};
 use crate::utils::compare_images::CompareImagesReturn;
 use axum::extract::{Path, State};
@@ -18,7 +19,7 @@ use axum::extract::{Path, State};
 #[openapi(
     paths(handle_snapshot, handle_get_snapshot_history, handle_get_snapshot_by_id),
     components(
-        schemas(SnapShotParams, SnapShotBatch, SnapShotBatch, CompareImagesReturn),
+        schemas(SnapShotParams, SnapShotBatch, SnapShotBatch, CompareImagesReturn, SnapShotBatchV2, DiffImage),
     ),
     tags((name = "Snapshot", description = "All about jobs"))
 )]
@@ -75,7 +76,7 @@ pub async fn handle_snapshot(
 )]
 async fn handle_get_snapshot_history(
     State(state): State<Arc<AppState>>,
-) -> Result<Json<Vec<SnapShotBatch>>, AppError> {
+) -> Result<Json<Vec<SnapShotBatchV2>>, AppError> {
     let res = snapshot_history_service::get_snapshot_history(state.db_pool.clone())
         .await
         .map_err(|e| AppError(e, axum::http::StatusCode::INTERNAL_SERVER_ERROR))?;
@@ -88,7 +89,7 @@ async fn handle_get_snapshot_history(
     path = "/api/snap-shots/{id}",
     params(("id", description = "Historical Item Id")),
     responses(
-        (status = 200, description = "Partner account was created", body = Vec<SnapShotBatch>),
+        (status = 200, description = "Partner account was created", body = Vec<SnapShotBatchV2>),
     ),
     tag="Snapshot"
 
@@ -96,8 +97,8 @@ async fn handle_get_snapshot_history(
 async fn handle_get_snapshot_by_id(
     Path(id): Path<Uuid>,
     State(state): State<Arc<AppState>>,
-) -> Result<Json<SnapShotBatch>, AppError> {
-    let result =
+) -> Result<Json<SnapShotBatchV2>, AppError> {
+    let result: Option<SnapShotBatchV2> =
         snapshot_history_service::get_snap_shot_batch_by_id(id, state.db_pool.clone()).await?;
 
     if result.is_some() {
