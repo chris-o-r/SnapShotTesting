@@ -1,0 +1,38 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  BASE_URL: 0.0.0.0
+  PORT: 8080
+  DB_NAME: mydatabase
+  DB_USER: myuser
+  DB_PASSWORD: mypassword
+  DB_HOST: postgres
+  DB_PORT: 5432
+  REDIS_URL: redis://redis:6379/
+  REDIS_PORT: 6379
+  SELENIUM_PORT: 4444
+  SELENIUM_HOST: selenium
+  ASSETS_FOLDER: /var/lib/snap-shot/data
+  SELENIUM_MAX_INSTANCES: 4
+  
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    
+    - uses: actions/checkout@v4
+    - name: Build
+      working-directory: ./api
+      run: cargo build --verbose
+    - name: Run tests
+      working-directory: ./api
+      run: cargo test --verbose
