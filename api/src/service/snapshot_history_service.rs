@@ -1,4 +1,4 @@
-use crate::models::snapshot_batch_v2::{DiffImage, SnapShotBatchV2};
+use crate::models::snapshot_batch::{DiffImage, SnapShotBatch};
 use anyhow::Error;
 use uuid::Uuid;
 
@@ -12,8 +12,8 @@ use crate::{
 
 pub async fn get_snapshot_history(
     db_pool: sqlx::Pool<sqlx::Postgres>,
-) -> Result<Vec<SnapShotBatchV2>, Error> {
-    let mut result: Vec<SnapShotBatchV2> = Vec::new();
+) -> Result<Vec<SnapShotBatch>, Error> {
+    let mut result: Vec<SnapShotBatch> = Vec::new();
     let snap_shot_batches = snap_shot_batch_store::get_all_snapshot_batches(&db_pool).await?;
 
     for batch in snap_shot_batches {
@@ -29,7 +29,7 @@ pub async fn get_snapshot_history(
 pub async fn get_snap_shot_batch_by_id(
     id: Uuid,
     db_pool: sqlx::Pool<sqlx::Postgres>,
-) -> Result<Option<SnapShotBatchV2>, Error> {
+) -> Result<Option<SnapShotBatch>, Error> {
     let batch_dto = match snap_shot_batch_store::get_snap_batch_by_id(&db_pool, &id).await? {
         Some(batch) => batch,
         None => return Ok(None),
@@ -43,7 +43,7 @@ pub async fn get_snap_shot_batch_by_id(
 fn create_snapshot_batch_from_dto(
     snap_shot_batch_dto: SnapShotBatchDTO,
     snap_shots: Vec<SnapShot>,
-) -> SnapShotBatchV2 {
+) -> SnapShotBatch {
     let old_images: Vec<SnapShot> = snap_shots
         .clone()
         .into_iter()
@@ -56,7 +56,7 @@ fn create_snapshot_batch_from_dto(
         .filter(|item| item.snap_shot_type == SnapShotType::New)
         .collect();
 
-    SnapShotBatchV2 {
+    SnapShotBatch {
         id: snap_shot_batch_dto.id,
         name: snap_shot_batch_dto.name,
         created_at: snap_shot_batch_dto.created_at,

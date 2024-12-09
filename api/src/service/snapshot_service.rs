@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use crate::{
-    models::snapshot_batch_v2::{DiffImage, SnapShotBatchV2},
+    models::snapshot_batch::{DiffImage, SnapShotBatch},
     utils::{
         capture_screenshots::{self, RawImage},
         compare_images::{self},
@@ -29,7 +29,7 @@ pub async fn create_snap_shots(
     new_url: &str,
     old_url: &str,
     db_pool: sqlx::Pool<sqlx::Postgres>,
-) -> Result<SnapShotBatchV2, Error> {
+) -> Result<SnapShotBatch, Error> {
     let asset_folder = env_variables::EnvVariables::new().assets_folder;
 
     let new_url = new_url.to_string();
@@ -99,7 +99,7 @@ pub async fn create_snap_shots(
     )
     .await?;
 
-    let batch = SnapShotBatchV2 {
+    let batch = SnapShotBatch {
         id: batch.id,
         name: batch.name,
         created_at: batch.created_at,
@@ -153,9 +153,14 @@ pub async fn create_snap_shots(
             .collect(),
     };
 
+    let snap_shot_array = batch.clone().into_snapshots().iter_mut().map(|item| {
+        item.path = item.path.replace(&asset_folder, "assets");
+        item.to_owned()
+    }).collect::<Vec<SnapShot>>();
+
     snapshot_store::insert_snapshots(
         &mut transaction,
-        create_snapshot_array(batch.clone(), &asset_folder),
+        snap_shot_array,
     )
     .await?;
 
@@ -164,79 +169,6 @@ pub async fn create_snap_shots(
     Ok(batch)
 }
 
-fn create_snapshot_array(batch: SnapShotBatchV2, asset_folder: &str) -> Vec<SnapShot> {
-    let mut snap_shots = Vec::new();
-
-    snap_shots.extend(batch.created_image_paths.iter().map(|item| SnapShot {
-        id: uuid::Uuid::new_v4(),
-        created_at: Utc::now().naive_utc(),
-        batch_id: batch.id,
-        path: item.replace(asset_folder, "assets").to_string(),
-        snap_shot_type: SnapShotType::Create,
-        name: item.split('/').last().unwrap().to_string(),
-    }));
-
-    snap_shots.extend(batch.deleted_image_paths.iter().map(|item| SnapShot {
-        id: uuid::Uuid::new_v4(),
-        created_at: Utc::now().naive_utc(),
-        batch_id: batch.id,
-        path: item.replace(asset_folder, "assets").to_string(),
-        snap_shot_type: SnapShotType::Deleted,
-        name: item.split('/').last().unwrap().to_string(),
-    }));
-
-    snap_shots.extend(
-        batch
-            .diff_image
-            .iter()
-            .map(|item| item.diff.clone())
-            .map(|item| SnapShot {
-                id: uuid::Uuid::new_v4(),
-                created_at: Utc::now().naive_utc(),
-                batch_id: batch.id,
-                path: item.replace(asset_folder, "assets").to_string(),
-                snap_shot_type: SnapShotType::Diff,
-                name: item
-                    .replace(asset_folder, "assets")
-                    .split('/')
-                    .last()
-                    .unwrap()
-                    .to_string(),
-            }),
-    );
-
-    snap_shots.extend(
-        batch
-            .diff_image
-            .iter()
-            .map(|item| item.new.clone())
-            .map(|item| SnapShot {
-                id: uuid::Uuid::new_v4(),
-                created_at: Utc::now().naive_utc(),
-                batch_id: batch.id,
-                path: item.replace(asset_folder, "assets").to_string(),
-                snap_shot_type: SnapShotType::New,
-                name: item.split('/').last().unwrap().to_string(),
-            }),
-    );
-
-    snap_shots.extend(
-        batch
-            .diff_image
-            .iter()
-            .map(|item| item.old.clone())
-            .map(|item| SnapShot {
-                id: uuid::Uuid::new_v4(),
-                created_at: Utc::now().naive_utc(),
-                batch_id: batch.id,
-                path: item.replace(asset_folder, "assets").to_string(),
-                snap_shot_type: SnapShotType::Old,
-                name: item.split('/').last().unwrap().to_string(),
-            }),
-    );
-
-    snap_shots
-}
 
 async fn handle_snap_shot_for_url(
     url: &str,
