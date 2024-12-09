@@ -26,7 +26,6 @@ services:
       SELENIUM_MAX_INSTANCES: 4
     depends_on:
       - postgres
-      - redis
       - selenium
     volumes:
       - ../api-data/app:/var/lib/snap-shot/data
@@ -40,15 +39,6 @@ services:
       - api
     environment:
       VITE_API_BASE_URL: http://api:3307/api
-  redis:
-    image: redis
-    container_name: redis-snap-shot
-    ports:
-      - '6379:6379'
-    volumes:
-      - ../redis-data:/data
-      - ./redis.conf:/usr/local/etc/redis/redis.conf
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
   postgres:
     image: postgres:14-alpine
     ports:
