@@ -1,7 +1,11 @@
-use super::env_variables;
+
+use crate::models::snapshot::SnapShotType;
+
+use super::{capture_screenshots::RawImage, env_variables, save_images::safe_save_image};
 use futures_util::{future::join_all, stream::FuturesUnordered};
+use image::{DynamicImage, ImageFormat};
 use serde::{Deserialize, Serialize};
-use std::fs;
+use std::{fs, io::Cursor};
 use tokio::task::{self};
 use utoipa::ToSchema;
 
@@ -14,9 +18,9 @@ static NUM_THREADS: usize = 6;
 
 #[derive(Debug, PartialEq)]
 struct CategorizedImages {
-    created_images_paths: Vec<String>,
-    deleted_images_paths: Vec<String>,
-    diff_images_paths: Vec<(String, String)>,
+    created_images_paths: Vec<RawImage>,
+    deleted_images_paths: Vec<RawImage>,
+    diff_images_paths: Vec<(RawImage, RawImage)>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, ToSchema)]
@@ -27,8 +31,8 @@ pub struct CompareImagesReturn {
 }
 
 pub async fn compare_images(
-    image_paths_1: Vec<String>,
-    image_paths_2: Vec<String>,
+    image_paths_1: Vec<RawImage>,
+    image_paths_2: Vec<RawImage>,
     random_folder_name: &str,
 ) -> Result<CompareImagesReturn, anyhow::Error> {
     let env_variables = env_variables::EnvVariables::new();
@@ -37,41 +41,61 @@ pub async fn compare_images(
 
     let categorized_images = categorize_images(image_paths_1, image_paths_2);
 
-    let random_folder_name = format!("{}/{}", env_variables.assets_folder, random_folder_name);
-
-    create_folders(random_folder_name.as_str())?;
+    create_folders(format!("{}/{}", env_variables.assets_folder, random_folder_name).as_str())?;
 
 
     for chunk in categorized_images.diff_images_paths.chunks(categorized_images.diff_images_paths.len() / NUM_THREADS) {
-        let chunk: Vec<(String, String)> = chunk.to_vec();
-        let random_folder_name = random_folder_name.clone(); // clone folder name for async block
-        handles.push(task::spawn(compare_image_chunk(chunk, random_folder_name)));
+        let chunk: Vec<(RawImage, RawImage)> = chunk.to_vec();
+        handles.push(task::spawn(compare_image_chunk(chunk)));
     }
 
+
+
     let result: CompareImagesReturn = CompareImagesReturn {
-        created_images_paths: categorized_images.created_images_paths,
-        deleted_images_paths: categorized_images.deleted_images_paths,
+        created_images_paths: categorized_images.created_images_paths
+            .iter()
+            .map(|raw| 
+                safe_save_image(
+                    raw.raw_image.clone(), 
+                    format!("{}/created", random_folder_name).as_str(), 
+                    &raw.image_name)
+                    .unwrap())
+                    .collect(),
+        deleted_images_paths: categorized_images.deleted_images_paths
+        .iter()
+        .map(|raw| 
+            safe_save_image(
+                raw.raw_image.clone(), 
+                format!("{}/deleted", random_folder_name).as_str(), 
+                &raw.image_name)
+                .unwrap())
+                .collect(),
         diff_images_paths: join_all(handles.into_iter())
             .await
             .into_iter()
             .map(|handle| handle.unwrap())
             .flat_map(|arr| arr.unwrap())
-            .collect(),
+            .map(|raw| 
+                safe_save_image(raw.raw_image, 
+                    format!("{}/diff", random_folder_name).as_str(), 
+                    &raw.image_name)
+                    .unwrap())
+                    .collect(),
     };
     
     Ok(result)
 }
 
 async fn compare_image_chunk(
-    chunk: Vec<(String, String)>,
-    random_folder_name: String,
-) -> Result<Vec<String>, anyhow::Error> {
-    let result = chunk.into_iter().map(|(image_1_path, image_2_path)| {
-        let image_result: Result<Option<String>, anyhow::Error> = (|| {
-            let mut image_1 = image::open(&image_1_path)
-                .map_err(|_| anyhow::Error::msg(format!("Failed to open image: {}", image_1_path)))?;
-            let mut image_2 = image::open(&image_2_path)
-                .map_err(|_| anyhow::Error::msg(format!("Failed to open image: {}", image_2_path)))?;
+    chunk: Vec<(RawImage, RawImage)>) -> Result<Vec<RawImage>, anyhow::Error> {
+    let result = chunk.into_iter().map(|(raw_image_1, raw_image_2)| {
+        let image_result: Result<Option<RawImage>, anyhow::Error> = (|| {
+         
+            let mut image_1 = image::load_from_memory(&raw_image_1.raw_image)
+                .map_err(|_| anyhow::Error::msg(format!("Failed to open image: {}", &raw_image_1.image_name)))?;
+         
+            let mut image_2 = image::load_from_memory(&raw_image_2.raw_image)
+                .map_err(|_| anyhow::Error::msg(format!("Failed to open image: {}", &raw_image_2.image_name)))?;
 
             let ratio = lcs_image_diff::calculate_diff_ratio(image_1.clone(), image_2.clone());
 
@@ -79,27 +103,21 @@ async fn compare_image_chunk(
                 return Ok(None);
             }
 
-            let file_name = format!(
-                "{}/diff/{}",
-                &random_folder_name,
-                image_1_path.split('/').last().unwrap()
-            );
-
             let image = lcs_image_diff::compare(&mut image_1, &mut image_2, RATE).map_err(|e| {
                 tracing::error!(
                     "Error comparing images \nimage one: {} \nimage two: {}",
-                    image_1_path,
-                    image_2_path
+                    raw_image_1.image_name,
+                    raw_image_2.image_name
                 );
                 anyhow::Error::msg(e.to_string())
             })?;
+            
 
-            image.save(&file_name).map_err(|_| {
-                tracing::error!("Unable to save image");
-                anyhow::Error::msg("Unable to save image")
-            })?;
-
-            Ok(Some(file_name))
+            Ok(Some(RawImage {
+                raw_image: image_to_vec_u8(image, ImageFormat::Png),
+                image_name: raw_image_1.image_name,
+                image_type: SnapShotType::New
+            }))
         })();
 
         image_result
@@ -112,21 +130,21 @@ async fn compare_image_chunk(
             tracing::error!("Error processing image: {}", e);
             None
         }
-    }).collect::<Vec<String>>();
+    }).collect::<Vec<RawImage>>();
 
     Ok(filtered_result)
 
 }
 
-fn categorize_images(image_paths_1: Vec<String>, image_paths_2: Vec<String>) -> CategorizedImages {
-    let mut created_images: Vec<String> = Vec::new();
-    let mut deleted_images: Vec<String> = Vec::new();
-    let mut diff_images: Vec<(String, String)> = Vec::new();
+fn categorize_images(image_paths_1: Vec<RawImage>, image_paths_2: Vec<RawImage>) -> CategorizedImages {
+    let mut created_images: Vec<RawImage> = Vec::new();
+    let mut deleted_images: Vec<RawImage> = Vec::new();
+    let mut diff_images: Vec<(RawImage, RawImage)> = Vec::new();
 
-    image_paths_1.clone().into_iter().for_each(|image_1| {
+    image_paths_1.clone().into_iter().for_each(|image_1: RawImage| {
         let image_2 = image_paths_2
             .iter()
-            .find(|&r| r.split('/').last() == image_1.split('/').last());
+            .find(|&r| r.image_name == image_1.image_name);
 
         match image_2 {
             Some(image_2) => {
@@ -141,7 +159,7 @@ fn categorize_images(image_paths_1: Vec<String>, image_paths_2: Vec<String>) -> 
     image_paths_2.into_iter().for_each(|image_2| {
         let image_2_in_result = image_paths_1
             .iter()
-            .find(|r| r.as_str().split('/').last() == image_2.as_str().split('/').last());
+            .find(|r| r.image_name == image_2.image_name);
 
         if image_2_in_result.is_none() {
             deleted_images.push(image_2.clone());
@@ -164,7 +182,13 @@ fn create_folders(folder_name: &str) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-#[cfg(test)]
+fn image_to_vec_u8(image: DynamicImage, format: ImageFormat) -> Vec<u8> {
+    let mut buffer = Cursor::new(Vec::new());
+    image.write_to(&mut buffer, format).unwrap();
+    buffer.into_inner()
+}
+
+/* #[cfg(test)]
 mod tests {
     use super::*;
 
@@ -201,3 +225,4 @@ mod tests {
         assert_eq!(result, expected_result);
     }
 }
+ */

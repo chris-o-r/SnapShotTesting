@@ -1,4 +1,3 @@
-use super::routes::handle_jobs;
 use super::routes::handle_snapshot;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -29,7 +28,6 @@ pub fn save_doc_to_file() -> Result<(), std::io::Error> {
 pub fn generate_doc() -> utoipa::openapi::OpenApi {
     let mut doc: utoipa::openapi::OpenApi = ApiDoc::openapi();
 
-    doc.merge(handle_jobs::JobApiDoc::openapi());
     doc.merge(handle_snapshot::SnapshotDoc::openapi());
 
     doc

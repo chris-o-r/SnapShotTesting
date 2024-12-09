@@ -6,13 +6,13 @@ use axum::{
 };
 use reqwest::StatusCode;
 
-use utoipa::{OpenApi, ToSchema};
+use utoipa::OpenApi;
 
 use crate::{
     api::errors::AppError,
     db::snapshot_store,
     models::    app_state::AppState,
-    service::{snapshot_history_service, snapshot_job_service}, utils::env_variables::EnvVariables,
+    service::snapshot_history_service, utils::env_variables::EnvVariables,
 };
 
 #[derive(OpenApi)]
@@ -35,8 +35,6 @@ pub fn router() -> Router<Arc<AppState>> {
     tag = "Admin"
 )]
 async fn handle_clean_up(State(state): State<Arc<AppState>>) -> Result<(), AppError> {
-    // Delete all jobs
-    snapshot_job_service::clear_all_runnning_jobs(state.redis_pool.clone()).await?;
     // Delete all batches
     snapshot_history_service::delete_all_batches(state.db_pool.clone()).await?;
     // Remove all josb

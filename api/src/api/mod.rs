@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use axum::{routing::get, Router};
-use routes::handle_jobs;
 use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
@@ -10,7 +9,7 @@ use tower_http::{
 use tracing::Level;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::{models::app_state::AppState, service::snapshot_job_service, utils::env_variables};
+use crate::{models::app_state::AppState, utils::env_variables};
 
 pub mod errors;
 pub mod routes;
@@ -20,14 +19,6 @@ pub async fn serve() {
     let app_state: Arc<AppState> = Arc::new(AppState::new().await);
     let env_variables = env_variables::EnvVariables::new();
 
-    match snapshot_job_service::clear_all_runnning_jobs(app_state.redis_pool.clone()).await {
-        Ok(num_deleted) => {
-            tracing::info!("Deleted {} old jobs", num_deleted);
-        }, 
-        Err (err) => {
-            tracing::error!("Unable to delete jobs\n {}", err)
-        }
-    }
     tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(tracing_subscriber::filter::LevelFilter::INFO)
         .init();
@@ -86,7 +77,6 @@ fn create_routes(app_state: Arc<AppState>) -> Router {
     Router::new()
         .route("/ping", get(routes::handle_ping::handler))
         .nest_service("/api/assets", ServeDir::new(env_variables.assets_folder))
-        .nest("/api/jobs", handle_jobs::router())
         .nest("/api/snap-shots", routes::handle_snapshot::router())
         .nest("/api/admin", routes::handle_admin::router())
         .merge(

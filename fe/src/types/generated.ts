@@ -27,7 +27,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["handle_get_snapshot_by_id"];
+        get: operations["handle_get_snapshot_by_id_v2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -77,6 +77,11 @@ export interface components {
             deleted_images_paths: string[];
             diff_images_paths: string[];
         };
+        DiffImage: {
+            diff: string;
+            new: string;
+            old: string;
+        };
         SnapShotBatch: {
             /** Format: date-time */
             created_at: string;
@@ -104,6 +109,18 @@ export interface components {
         };
         /** @enum {string} */
         SnapShotBatchJobStatus: "Pending" | "Processing" | "Completed" | "Failed";
+        SnapShotBatchV2: {
+            /** Format: date-time */
+            created_at: string;
+            created_image_paths: string[];
+            deleted_image_paths: string[];
+            diff_image: components["schemas"]["DiffImage"][];
+            /** Format: uuid */
+            id: string;
+            name: string;
+            new_story_book_version: string;
+            old_story_book_version: string;
+        };
         SnapShotParams: {
             new?: string | null;
             old?: string | null;
@@ -161,7 +178,7 @@ export interface operations {
             };
         };
     };
-    handle_get_snapshot_by_id: {
+    handle_get_snapshot_by_id_v2: {
         parameters: {
             query?: never;
             header?: never;
@@ -179,7 +196,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SnapShotBatch"][];
+                    "application/json": components["schemas"]["SnapShotBatchV2"][];
                 };
             };
         };
