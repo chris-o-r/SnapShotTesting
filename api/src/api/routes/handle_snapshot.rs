@@ -59,7 +59,6 @@ pub async fn handle_snapshot(
         new.as_str(),
         old.as_str(),
         state.db_pool.clone(),
-        state.redis_pool.clone()
     )
     .await
     .map_err(|e| AppError(e, StatusCode::INTERNAL_SERVER_ERROR))

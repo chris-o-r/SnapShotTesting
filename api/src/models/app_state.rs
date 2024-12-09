@@ -1,15 +1,13 @@
-use bb8_redis::{bb8, RedisConnectionManager};
 use sqlx::{Pool, Postgres};
 
 use crate::{
-    db::{connection::create_connection_pool, redis_connection::create_redis_pool},
+    db::connection::create_connection_pool,
     utils::env_variables::EnvVariables,
 };
 
 #[derive(Clone)]
 pub struct AppState {
     pub db_pool: Pool<Postgres>,
-    pub redis_pool: bb8_redis::bb8::Pool<bb8_redis::RedisConnectionManager>,
 }
 
 impl AppState {
@@ -24,11 +22,8 @@ impl AppState {
             Err(err) => panic!("Cannot connect to postgres database [{}]", err.to_string()),
         };
 
-        let redis_pool: bb8::Pool<RedisConnectionManager> = create_redis_pool().await;
-
         Self {
             db_pool,
-            redis_pool,
         }
     }
 }

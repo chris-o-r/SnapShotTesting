@@ -1,11 +1,11 @@
-import { MenuItem, menuItems, useNavigation } from "@/context/navigationContext";
+import { useNavigation } from "@/context/navigationContext";
 import { Menu } from "antd";
 import { useMemo } from "react";
 import { matchPath, useNavigate } from "react-router-dom";
 
 export default function Navigation() {
   const navigate = useNavigate();
-  const { navigationItems} = useNavigation( )
+  const { navigationItems} = useNavigation()
 
 
   const pathName = window.location.pathname;

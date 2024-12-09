@@ -3,7 +3,7 @@ use crate::models::snapshot::SnapShotType;
 
 use super::{capture_screenshots::RawImage, env_variables, save_images::safe_save_image};
 use futures_util::{future::join_all, stream::FuturesUnordered};
-use image::{DynamicImage, GenericImageView, ImageFormat};
+use image::{DynamicImage, ImageFormat};
 use serde::{Deserialize, Serialize};
 use std::{fs, io::Cursor};
 use tokio::task::{self};

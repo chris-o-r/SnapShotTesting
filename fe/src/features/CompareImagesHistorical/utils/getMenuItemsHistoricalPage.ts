@@ -52,16 +52,3 @@ export function getMenuItemsHistoricalPage(
   ];
 }
 
-const getTitle = (key: string) => {
-  if (key === "new_images_paths") {
-    return "New Images";
-  } else if (key === "old_images_paths") {
-    return "Old Images";
-  } else if (key === "diff_images_paths") {
-    return "Changed";
-  } else if (key === "created_images_paths") {
-    return "Created";
-  } else if (key === "deleted_images_paths") {
-    return "Deleted";
-  }
-};

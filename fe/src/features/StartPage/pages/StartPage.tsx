@@ -1,14 +1,12 @@
-import { Button, Form, Input, Layout } from "antd";
+import { Button, Form, Input } from "antd";
 import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import { useMutateCompareStoryBookUrls } from "@/api/compareStoryBookUrls.api";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Content, Header } from "antd/es/layout/layout";
+import { Content } from "antd/es/layout/layout";
 import { QueryClient } from "@/App";
-import Sider from "antd/es/layout/Sider";
 import { QUERY_KEYS } from "@/api/constants";
 import { toast } from "react-toastify";
-import Navigation from "@/components/Navigation";
 import Loadable from "@/components/Loader";
 
 type StartPageForm = {

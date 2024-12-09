@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from "react";
 import { MenuItemType } from "antd/es/menu/interface";
-import { DeliveredProcedureOutlined, HistoryOutlined, HomeOutlined, SettingOutlined } from "@ant-design/icons";
+import { HistoryOutlined, HomeOutlined, SettingOutlined } from "@ant-design/icons";
 
 export type MenuItem = MenuItemType & { href: string };
 
@@ -18,12 +18,6 @@ export const menuItems: MenuItem[] = [
     key: "2",
     href: "/compare/historical",
     icon: <HistoryOutlined />,
-  },
-  {
-    label: "Jobs",
-    key: "3",
-    href: "/jobs",
-    icon: <DeliveredProcedureOutlined />,
   },
   {
     label: "Admin",
