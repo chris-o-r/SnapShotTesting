@@ -5,7 +5,7 @@ use chrono::NaiveDateTime;
 use sqlx::{postgres::PgRow, Row};
 use uuid::Uuid;
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, sqlx::Type)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, sqlx::Type, Copy)]
 #[sqlx(type_name = "snap_shot_type", rename_all = "lowercase")]
 pub enum SnapShotType {
     New,

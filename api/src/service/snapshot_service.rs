@@ -1,11 +1,10 @@
-use crate::utils::{
-    capture_screenshots,
-    compare_images::{self, CompareImagesReturn},
-    env_variables,
-    story_book::get_screenshot_params_by_url,
-};
+use std::path::Path;
+
+use crate::{models::snapshot_batch_v2::{DiffImage, SnapShotBatchV2}, utils::{
+    capture_screenshots::{self, RawImage}, compare_images::{self}, env_variables, save_images::safe_save_image, story_book::get_screenshot_params_by_url
+}};
 use anyhow::Error;
-use chrono::{NaiveDateTime, Utc};
+use chrono::Utc;
 use uuid::Uuid;
 
 use crate::{
@@ -15,18 +14,21 @@ use crate::{
     },
     models::{
         snapshot::{SnapShot, SnapShotType},
-        snapshot_batch::{SnapShotBatch, SnapShotBatchDTO},
+        snapshot_batch::SnapShotBatchDTO,
         snapshot_batch_job::{SnapShotBatchJob, SnapShotBatchJobStatus},
     },
 };
+
+
 
 pub async fn create_snap_shots(
     new_url: &str,
     old_url: &str,
     db_pool: sqlx::Pool<sqlx::Postgres>,
     redis_pool: bb8_redis::bb8::Pool<bb8_redis::RedisConnectionManager>,
-) -> Result<SnapShotBatch, Error> {
+) -> Result<SnapShotBatchV2, Error> {
     let mut job: SnapShotBatchJob = create_batch_job(&redis_pool).await?;
+    let asset_folder = env_variables::EnvVariables::new().assets_folder;
 
     let new_url = new_url.to_string();
     let old_url = old_url.to_string();
@@ -48,7 +50,6 @@ pub async fn create_snap_shots(
     job.snap_shot_batch_id = Some(batch.id.clone());
     job.updated_at = Utc::now().naive_utc();
     job.progress = 0.1;
-    snapshot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
 
     let random_folder_name = format!(
         "{}-{}",
@@ -59,7 +60,7 @@ pub async fn create_snap_shots(
         &batch.id.clone(),
     );
 
-    let images_1: Vec<Result<String, Error>> = match handle_snap_shot_for_url(&new_url, &random_folder_name.as_str(), "new").await {
+    let images_1: Vec<Result<RawImage, Error>> = match handle_snap_shot_for_url(&new_url, SnapShotType::New).await {
         Ok(res) => res, 
         Err(err) => {
             job.updated_at = Utc::now().naive_utc();
@@ -71,12 +72,8 @@ pub async fn create_snap_shots(
     };
         
 
-    job.updated_at = Utc::now().naive_utc();
-    job.progress = 0.4;
-    snapshot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
-
-    let images_2: Vec<Result<String, Error>> = match
-        handle_snap_shot_for_url(&old_url, random_folder_name.as_str(), "old").await {
+    let images_2: Vec<Result<RawImage, Error>>  = match
+        handle_snap_shot_for_url(&old_url,  SnapShotType::Old).await {
             Ok(res) => res,
             Err(err) => {
                 job.updated_at = Utc::now().naive_utc();
@@ -86,20 +83,14 @@ pub async fn create_snap_shots(
                 return Err(err);
             }
         };
-
-    job.updated_at = Utc::now().naive_utc();
-    job.progress = 0.7;
-
-    snapshot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
-
     /*
        Remove images that are not valid from each list
        If an image in array 1 is not valid, remove it
        from array 2 at the same index and vice versa
     */
 
-    let mut images_1_cleaned: Vec<String> = vec![];
-    let mut images_2_cleaned: Vec<String> = vec![];
+    let mut images_1_cleaned: Vec<RawImage>  = vec![];
+    let mut images_2_cleaned: Vec<RawImage> = vec![];
 
     images_1
         .into_iter()
@@ -107,13 +98,13 @@ pub async fn create_snap_shots(
         .for_each(|(image_1, image_2)| match (image_1, image_2) {
             (Ok(img_1), Ok(img_2)) => {
                 images_1_cleaned.push(img_1);
-                images_2_cleaned.push(String::from(img_2));
+                images_2_cleaned.push(img_2.clone());
             }
             (Err(_), Ok(img_2)) => {
-                images_2_cleaned.push(String::from(img_2));
+                images_2_cleaned.push(img_2.clone());
             }
             (Ok(img_1), Err(_)) => {
-                images_1_cleaned.push(String::from(img_1));
+                images_1_cleaned.push(img_1);
             }
             (Err(_), Err(_)) => {
                 // Do nothing
@@ -137,116 +128,127 @@ pub async fn create_snap_shots(
         }
     };
 
-    let snap_shots = create_snapshot_array(
-        diff_images.clone(),
-        images_1_cleaned.clone(),
-        images_2_cleaned.clone(),
-        &batch.id.clone(),
-    );
-
-    snapshot_store::insert_snapshots(&mut transaction, snap_shots).await?;
-
-    transaction.commit().await?;
-
-    job.status = SnapShotBatchJobStatus::Completed;
-    job.progress = 1.0;
-    job.updated_at = Utc::now().naive_utc();
-    snapshot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
-
-    snapshot_batch_job_store::insert_snapshot_batch_job(&redis_pool, job.clone()).await?;
-
-    Ok(SnapShotBatch {
+    let batch = SnapShotBatchV2 {
         id: batch.id,
         name: batch.name,
         created_at: batch.created_at,
         new_story_book_version: batch.new_story_book_version,
         old_story_book_version: batch.old_story_book_version,
-        diff_images_paths: diff_images,
-        new_images_paths: images_1_cleaned,
-        old_images_paths: images_2_cleaned,
-    })
+        created_image_paths: diff_images.created_images_paths,
+        deleted_image_paths: diff_images.deleted_images_paths,
+        diff_image: 
+         diff_images.diff_images_paths.clone()
+            .into_iter()
+            .filter_map(|snap| {
+
+                let image_name = Path::new(&snap)
+                .file_stem().and_then(|os_str| os_str.to_str()).unwrap();
+
+                let old_image = images_1_cleaned
+                    .clone()
+                    .into_iter()
+                    .find(|item| {
+                        return item.image_name == image_name;
+                    })
+                    .unwrap();
+
+                let new_image = images_1_cleaned
+                    .clone()
+                    .into_iter()
+                    .find(|item| {
+                        return item.image_name == image_name;
+                    })
+                    .unwrap();
+
+               let image_new_name = safe_save_image(new_image.raw_image, format!("{}/new", random_folder_name).as_str(),  &new_image.image_name);
+               let image_old_name = safe_save_image(old_image.raw_image, format!("{}/old", random_folder_name).as_str(),  &old_image.image_name);
+
+                Some(DiffImage {
+                    new: image_new_name.unwrap(),
+                    old: image_old_name.unwrap(),
+                    diff: snap.clone(),
+                })
+            })
+            .collect(),
+        };
+
+    
+    snapshot_store::insert_snapshots(&mut transaction, create_snapshot_array(batch.clone(), &asset_folder)).await?;
+
+    transaction.commit().await?;
+
+
+    Ok(batch)
 }
 
 fn create_snapshot_array(
-    diff_images: CompareImagesReturn,
-    new_images: Vec<String>,
-    old_images: Vec<String>,
-    batch_id: &Uuid,
+    batch: SnapShotBatchV2,
+    asset_folder: &str
 ) -> Vec<SnapShot> {
     let mut snap_shots = Vec::new();
 
-    snap_shots.extend(paths_to_snap_shot(
-        batch_id,
-        diff_images.diff_images_paths,
-        SnapShotType::Diff,
-        Utc::now().naive_utc(),
-    ));
+    snap_shots.extend(batch.created_image_paths.iter().map(|item| SnapShot {
+        id: uuid::Uuid::new_v4(),
+        created_at: Utc::now().naive_utc(),
+        batch_id: batch.id,
+        path: item.replace(asset_folder, "assets").to_string(),
+        snap_shot_type: SnapShotType::Create,
+        name: item.split('/').last().unwrap().to_string()
+    }));
 
-    snap_shots.extend(paths_to_snap_shot(
-        batch_id,
-        diff_images.deleted_images_paths,
-        SnapShotType::Deleted,
-        Utc::now().naive_utc(),
-    ));
+    snap_shots.extend(batch.deleted_image_paths.iter().map(|item| SnapShot {
+        id: uuid::Uuid::new_v4(),
+        created_at: Utc::now().naive_utc(),
+        batch_id: batch.id,
+        path: item.replace(asset_folder, "assets").to_string(),
+        snap_shot_type: SnapShotType::Deleted,
+        name: item.split('/').last().unwrap().to_string()
+    }));
 
-    snap_shots.extend(paths_to_snap_shot(
-        batch_id,
-        diff_images.created_images_paths,
-        SnapShotType::Create,
-        Utc::now().naive_utc(),
-    ));
+    snap_shots.extend(batch.diff_image.iter().map(|item| item.diff.clone()).map(|item| SnapShot {
+        id: uuid::Uuid::new_v4(),
+        created_at: Utc::now().naive_utc(),
+        batch_id: batch.id,
+        path: item.replace(asset_folder, "assets").to_string(),
+        snap_shot_type: SnapShotType::Diff,
+        name: item.replace(asset_folder, "assets").split('/').last().unwrap().to_string()
+    }));
 
-    snap_shots.extend(paths_to_snap_shot(
-        batch_id,
-        new_images,
-        SnapShotType::New,
-        Utc::now().naive_utc(),
-    ));
+    snap_shots.extend(batch.diff_image.iter().map(|item| item.new.clone()).map(|item| SnapShot {
+        id: uuid::Uuid::new_v4(),
+        created_at: Utc::now().naive_utc(),
+        batch_id: batch.id,
+        path: item.replace(asset_folder, "assets").to_string(),
+        snap_shot_type: SnapShotType::New,
+        name: item.split('/').last().unwrap().to_string()
+    }));
 
-    snap_shots.extend(paths_to_snap_shot(
-        batch_id,
-        old_images,
-        SnapShotType::Old,
-        Utc::now().naive_utc(),
-    ));
+    snap_shots.extend(batch.diff_image.iter().map(|item| item.old.clone()).map(|item| SnapShot {
+        id: uuid::Uuid::new_v4(),
+        created_at: Utc::now().naive_utc(),
+        batch_id: batch.id,
+        path: item.replace(asset_folder, "assets").to_string(),
+        snap_shot_type: SnapShotType::Old,
+        name: item.split('/').last().unwrap().to_string()
+    }));
+
 
     snap_shots
 }
 
-fn paths_to_snap_shot(
-    batch_id: &Uuid,
-    paths: Vec<String>,
-    snap_shot_type: SnapShotType,
-    created_at: NaiveDateTime,
-) -> Vec<SnapShot> {
-    let asset_folder = env_variables::EnvVariables::new().assets_folder;
-
-    paths
-        .iter()
-        .map(|path| SnapShot {
-            id: Uuid::new_v4(),
-            batch_id: batch_id.clone(),
-            name: path.clone().split('/').last().unwrap().to_string(),
-            path: path.replace(&asset_folder, "assets"),
-            snap_shot_type: snap_shot_type.clone(),
-            created_at: created_at,
-        })
-        .collect()
-}
-
 async fn handle_snap_shot_for_url(
     url: &str,
-    random_folder_name: &str,
-    param_name: &str,
-) -> Result<Vec<Result<String, Error>>, Error> {
+    image_type: SnapShotType,
+) -> Result<Vec<Result<RawImage, Error>>, Error> {
     tracing::debug!("Capturing screen shots for url: {}", url);
 
-    let image_params = get_screenshot_params_by_url(url, param_name).await?;
+    let image_params = get_screenshot_params_by_url(url, image_type).await?;
 
     let results =
-        capture_screenshots::capture_screenshots(&image_params, random_folder_name).await?;
+        capture_screenshots::capture_screenshots(&image_params).await?;
 
     let num_ok_results = results.iter().filter(|r| r.is_ok()).count();
+   
     tracing::debug!(
         "Captured {}/{} for url {}",
         num_ok_results,

@@ -43,7 +43,7 @@ pub struct SnapShotParams {
     path = "/api/snap-shots",
     request_body = SnapShotParams,
     responses(
-        (status = 200, description = "Partner account was created", body = SnapShotBatch),
+        (status = 200, description = "Partner account was created", body = SnapShotBatchV2),
     ),
     tag="Snapshot"
 
@@ -51,7 +51,7 @@ pub struct SnapShotParams {
 pub async fn handle_snapshot(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<SnapShotParams>,
-) -> Result<SnapShotBatch, AppError> {
+) -> Result<SnapShotBatchV2, AppError> {
 
     let (new, old) = validate_payload(payload)?;
 
@@ -59,7 +59,7 @@ pub async fn handle_snapshot(
         new.as_str(),
         old.as_str(),
         state.db_pool.clone(),
-        state.redis_pool.clone(),
+        state.redis_pool.clone()
     )
     .await
     .map_err(|e| AppError(e, StatusCode::INTERNAL_SERVER_ERROR))

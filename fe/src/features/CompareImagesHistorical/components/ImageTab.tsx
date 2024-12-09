@@ -32,6 +32,7 @@ export const ImageTab = ({ images, title }: Props) => {
           {images.map((img) => {
             return (
               <Card
+                hoverable
                 className="cursor-pointer"
                 title={getImageTitle(img)}
                 onClick={() => openDialog(`${API_BASE_URL}/${img}`)}

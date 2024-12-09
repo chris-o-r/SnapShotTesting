@@ -6,6 +6,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { PageTitleProvider } from "./context/pageTitleContext";
 import { ErrorBoundary } from "./features/ErrorBoundary";
 import { Layout } from "./Layouts/Layout";
+import { NavigationProvider } from "./context/navigationContext";
 
 export const QueryClient = new RQQueryClient({
   defaultOptions: {
@@ -21,6 +22,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <PageTitleProvider>
+        <NavigationProvider>
         <PersistQueryClientProvider
           client={QueryClient}
           persistOptions={{ persister }}
@@ -29,6 +31,7 @@ export default function App() {
 
           <Layout />
         </PersistQueryClientProvider>
+        </NavigationProvider>
       </PageTitleProvider>
     </ErrorBoundary>
   );

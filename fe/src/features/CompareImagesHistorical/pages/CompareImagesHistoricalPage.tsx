@@ -4,9 +4,30 @@ import { Tabs, TabsProps } from "antd";
 import { useParams } from "react-router-dom";
 import { DiffImageTab } from "../components/DiffImageTab";
 import { ImageTab } from "../components/ImageTab";
+import { menuItems, useNavigation } from "@/context/navigationContext";
+import { ArrowLeftOutlined } from "@ant-design/icons";
+import { useEffect } from "react";
 
 export default function CompareImagesHistoricalPage() {
   const { historicalSnapShotId } = useParams();
+  const {setNavigationItems} = useNavigation()
+
+  useEffect(() => {
+    setNavigationItems(
+      [
+        {
+          label: "Back",
+          href: "/",
+          key: "1",
+          icon: <ArrowLeftOutlined />,
+        }
+      ]
+    )
+    return () => {
+      setNavigationItems(menuItems)
+    }
+  }
+)
 
   const { data: historicalSnapShotData, isLoading } =
     useFetchSnapShotHistoryItem(historicalSnapShotId ?? "");
