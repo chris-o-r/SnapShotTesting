@@ -1,18 +1,20 @@
-use anyhow::Error;
 use axum::http::StatusCode;
 use axum::{routing, Json, Router};
-use regex::Regex;
+use axum::extract::{Path, State};
+
 use serde::Deserialize;
+use validator::Validate;
 use std::sync::Arc;
 use utoipa::{OpenApi, ToSchema};
 use uuid::Uuid;
 
 use crate::api::errors::AppError;
+use crate::api::extractors::ValidateJson;
 use crate::models::app_state::AppState;
 use crate::models::snapshot_batch::{DiffImage, SnapShotBatch};
 use crate::service::{snapshot_history_service, snapshot_service};
 use crate::utils::compare_images::CompareImagesReturn;
-use axum::extract::{Path, State};
+
 
 #[derive(OpenApi)]
 #[openapi(
@@ -31,10 +33,13 @@ pub fn router() -> Router<Arc<AppState>> {
         .route("/:id", routing::get(handle_get_snapshot_by_id))
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+
+#[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct SnapShotParams {
-    new: Option<String>,
-    old: Option<String>,
+    #[validate(url)]
+    new: String,
+    #[validate(url)]
+    old: String,
 }
 
 #[utoipa::path(
@@ -42,21 +47,20 @@ pub struct SnapShotParams {
     path = "/api/snap-shots",
     request_body = SnapShotParams,
     responses(
-        (status = 200, description = "Partner account was created", body = SnapShotBatchV2),
+        (status = 200, description = "Creates snap shots", body = SnapShotBatchV2),
     ),
     tag="Snapshot"
 
 )]
 pub async fn handle_snapshot(
     State(state): State<Arc<AppState>>,
-    Json(payload): Json<SnapShotParams>,
+    ValidateJson(payload): ValidateJson<SnapShotParams>,
 ) -> Result<SnapShotBatch, AppError> {
 
-    let (new, old) = validate_payload(payload)?;
-
+    
     snapshot_service::create_snap_shots(
-        new.as_str(),
-        old.as_str(),
+        payload.new.as_str(),
+        payload.old.as_str(),
         state.db_pool.clone(),
     )
     .await
@@ -109,47 +113,3 @@ async fn handle_get_snapshot_by_id(
     }
 }
 
-
-fn validate_payload(snap_shot_param: SnapShotParams) -> Result<(String, String), AppError> {
-    
-    let domain_regex = Regex::new(r"^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:/.*)?$").unwrap();
-
-
-    let new = match snap_shot_param.new {
-        Some(new) => new,
-        None => {
-            return Err(AppError(
-                Error::msg("New URL is required"),
-                StatusCode::BAD_REQUEST,
-            ))
-        }
-    };
-
-    let old = match snap_shot_param.old {
-        Some(old) => old,
-        None => {
-            return Err(AppError(
-                Error::msg("New URL is required"),
-                StatusCode::BAD_REQUEST,
-            ));
-        }
-    };
-
-    if !domain_regex.is_match(&new) {
-        return Err(AppError(
-            Error::msg("Incorrect format for new url"),
-            StatusCode::BAD_REQUEST,
-        ))
-    }
-
-    if !domain_regex.is_match(&old) {
-        return Err(AppError(
-            Error::msg("Incorrect format for old url"),
-            StatusCode::BAD_REQUEST,
-        ))
-    }
-
-
-    Ok((new, old))
-
-}

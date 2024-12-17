@@ -54,7 +54,7 @@ pub async fn get_screenshot_params_by_url(
 }
 
 async fn get_story_book_config(url: &str) -> Result<StoryBookConfig, Error> {
-    let response: reqwest::Response = reqwest::get(format!("http://{}/index.json", url)).await?;
+    let response: reqwest::Response = reqwest::get(format!("{}/index.json", url)).await?;
     let body = response.text().await?;
 
     let config: StoryBookConfig = serde_json::from_str(body.as_str())?;

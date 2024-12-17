@@ -91,7 +91,6 @@ pub async fn create_snap_shots(
             }
         });
 
-    tracing::info!("Comparing images");
     let diff_images = compare_images::compare_images(
         images_1_cleaned.clone(),
         images_2_cleaned.clone(),
