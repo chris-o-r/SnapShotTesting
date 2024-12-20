@@ -1,3 +1,4 @@
+
 use crate::utils::date_format;
 use axum::{body::Body, http::Response, response::IntoResponse};
 use chrono::NaiveDateTime;
@@ -8,6 +9,13 @@ use uuid::Uuid;
 use super::snapshot::{SnapShot, SnapShotType};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, ToSchema)]
+pub struct SnapShotBatchImage {
+    pub path: String,
+    pub width: f64,
+    pub height: f64,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, ToSchema)]
 pub struct SnapShotBatch {
     pub id: Uuid,
     pub name: String,
@@ -15,93 +23,94 @@ pub struct SnapShotBatch {
     pub created_at: NaiveDateTime,
     pub new_story_book_version: String,
     pub old_story_book_version: String,
-    pub created_image_paths: Vec<String>,
-    pub deleted_image_paths: Vec<String>,
-    pub diff_image: Vec<DiffImage>
+    pub created_image_paths: Vec<SnapShotBatchImage>,
+    pub deleted_image_paths: Vec<SnapShotBatchImage>,
+    pub diff_image: Vec<DiffImage>,
 }
 
 impl SnapShotBatch {
     pub fn into_snapshots(self) -> Vec<SnapShot> {
-         let mut snap_shots = Vec::new();
- 
-         snap_shots.extend(self.created_image_paths.iter().map(|item| SnapShot {
-             id: uuid::Uuid::new_v4(),
-             created_at: self.created_at,
-             batch_id: self.id,
-             path: item.to_string(),
-             snap_shot_type: SnapShotType::Create,
-             name: item.split('/').last().unwrap().to_string(),
-         }));
-     
-         snap_shots.extend(self.deleted_image_paths.iter().map(|item| SnapShot {
-             id: uuid::Uuid::new_v4(),
-             created_at: self.created_at,
-             batch_id: self.id,
-             path: item.to_string(),
-             snap_shot_type: SnapShotType::Deleted,
-             name: item.split('/').last().unwrap().to_string(),
-         }));
-     
-         snap_shots.extend(
-             self
-                 .diff_image
-                 .iter()
-                 .map(|item| item.diff.clone())
-                 .map(|item| SnapShot {
-                     id: uuid::Uuid::new_v4(),
-                     created_at: self.created_at,
-                     batch_id: self.id,
-                     path: item.clone(),
-                     snap_shot_type: SnapShotType::Diff,
-                     name: item
-                         .split('/')
-                         .last()
-                         .unwrap()
-                         .to_string(),
-                 }),
-         );
-     
-         snap_shots.extend(
-             self
-                 .diff_image
-                 .iter()
-                 .map(|item| item.new.clone())
-                 .map(|item| SnapShot {
-                     id: uuid::Uuid::new_v4(),
-                     created_at: self.created_at,
-                     batch_id: self.id,
-                     path: item.clone(),
-                     snap_shot_type: SnapShotType::New,
-                     name: item.split('/').last().unwrap().to_string(),
-                 }),
-         );
-     
-         snap_shots.extend(
-             self
-                 .diff_image
-                 .iter()
-                 .map(|item| item.old.clone())
-                 .map(|item| SnapShot {
-                     id: uuid::Uuid::new_v4(),
-                     created_at: self.created_at,
-                     batch_id: self.id,
-                     path: item.clone(),
-                     snap_shot_type: SnapShotType::Old,
-                     name: item.split('/').last().unwrap().to_string(),
-                 }),
-         );
-     
-         snap_shots
-     }
-     
- }
- 
+        let mut snap_shots = Vec::new();
+
+        snap_shots.extend(self.created_image_paths.iter().map(|item| SnapShot {
+            id: uuid::Uuid::new_v4(),
+            created_at: self.created_at,
+            batch_id: self.id,
+            path: item.path.clone(),
+            width: item.width,
+            height: item.height,
+            name: item.path.split('/').last().unwrap().to_string(),
+            snap_shot_type: SnapShotType::Create,
+        }));
+
+        snap_shots.extend(self.deleted_image_paths.iter().map(|item| SnapShot {
+            id: uuid::Uuid::new_v4(),
+            created_at: self.created_at,
+            batch_id: self.id,
+            path: item.path.clone(),
+            width: item.width,
+            height: item.height,
+            name: item.path.split('/').last().unwrap().to_string(),
+            snap_shot_type: SnapShotType::Deleted,
+        }));
+
+        snap_shots.extend(
+            self.diff_image
+                .iter()
+                .map(|item| item.diff.clone())
+                .map(|item| SnapShot {
+                    id: uuid::Uuid::new_v4(),
+                    created_at: self.created_at,
+                    batch_id: self.id,
+                    path: item.path.clone(),
+                    width: item.width,
+                    height: item.height,
+                    name: item.path.split('/').last().unwrap().to_string(),
+                    snap_shot_type: SnapShotType::Diff,
+                }),
+        );
+
+        snap_shots.extend(
+            self.diff_image
+                .iter()
+                .map(|item| item.new.clone())
+                .map(|item| SnapShot {
+                    id: uuid::Uuid::new_v4(),
+                    created_at: self.created_at,
+                    batch_id: self.id,
+                    path: item.path.clone(),
+                    width: item.width,
+                    height: item.height,
+                    name: item.path.split('/').last().unwrap().to_string(),
+                    snap_shot_type: SnapShotType::New,
+                }),
+        );
+
+        snap_shots.extend(
+            self.diff_image
+                .iter()
+                .map(|item| item.old.clone())
+                .map(|item| SnapShot {
+                    id: uuid::Uuid::new_v4(),
+                    created_at: self.created_at,
+                    batch_id: self.id,
+                    path: item.path.clone(),
+                    width: item.width,
+                    height: item.height,
+                    name: item.path.split('/').last().unwrap().to_string(),
+                    snap_shot_type: SnapShotType::Old,
+                }),
+        );
+
+        snap_shots
+    }
+}
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, ToSchema)]
 pub struct DiffImage {
-    pub diff: String, 
-    pub new: String, 
-    pub old: String
+    pub diff: SnapShotBatchImage,
+    pub new: SnapShotBatchImage,
+    pub old: SnapShotBatchImage,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]

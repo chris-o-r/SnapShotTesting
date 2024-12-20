@@ -10,24 +10,21 @@ import { useEffect } from "react";
 
 export default function CompareImagesHistoricalPage() {
   const { historicalSnapShotId } = useParams();
-  const {setNavigationItems} = useNavigation()
+  const { setNavigationItems } = useNavigation();
 
-  useEffect(() => {
-    setNavigationItems(
-      [
-        {
-          label: "Back",
-          href: "/",
-          key: "1",
-          icon: <ArrowLeftOutlined />,
-        }
-      ]
-    )
-    return () => {
-      setNavigationItems(menuItems)
-    }
-  }
-)
+ useEffect(() => {
+   setNavigationItems([
+     {
+       label: "Back",
+       href: "/",
+       key: "1",
+       icon: <ArrowLeftOutlined />,
+     },
+   ]);
+   return () => {
+     setNavigationItems(menuItems);
+   };
+ }, []);
 
   const { data: historicalSnapShotData, isLoading } =
     useFetchSnapShotHistoryItem(historicalSnapShotId ?? "");

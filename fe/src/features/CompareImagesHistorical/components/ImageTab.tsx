@@ -1,8 +1,12 @@
 import { API_BASE_URL } from "@/constants";
-import { Card, Modal } from "antd";
+import { Card, Image, Modal } from "antd";
 import { useState } from "react";
 type Props = {
-  images: string[];
+  images: {
+    height: number;
+    width: number;
+    path: string;
+  }[];
   title: string;
 };
 export const ImageTab = ({ images, title }: Props) => {
@@ -11,42 +15,30 @@ export const ImageTab = ({ images, title }: Props) => {
     return urlSplit[urlSplit.length - 1];
   };
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentImage, setCurrentImage] = useState<string | null>(null);
 
-  const openDialog = (url: string) => {
-    setIsModalOpen(true);
-    setCurrentImage(url);
-  };
-
-  const closeDialog = () => {
-    setCurrentImage(null);
-    setIsModalOpen(false);
-  };
 
   return (
     <>
       <div className="space-y-2">
         <h2 className="text-2xl font-bold">{title}</h2>
         <div className="grid grid-cols-4 grid-flow-row gap-3">
-          {images.map((img) => {
+          {images.map(({ path }) => {
             return (
               <Card
                 hoverable
-                className="cursor-pointer"
-                title={getImageTitle(img)}
-                onClick={() => openDialog(`${API_BASE_URL}/${img}`)}
+                className="cursor-pointer w-full"
+                title={getImageTitle(path)}
               >
-                <img alt="sds" src={`${API_BASE_URL}/${img}`} key={img} />
+                <Image
+                  alt="sds"
+                  src={`${API_BASE_URL}/${path}`}
+                  key={path}
+                />
               </Card>
             );
           })}
         </div>
       </div>
-
-      <Modal title="Basic Modal" open={isModalOpen}  onOk={() => closeDialog()}>
-        <img alt="sds" src={currentImage!} key={currentImage} />
-      </Modal>
     </>
   );
 };

@@ -4,7 +4,7 @@ import { QUERY_KEYS } from "./constants";
 import { operations } from "@/types/generated";
 
 export type SnapShotHistoryResponse =
-  operations["handle_get_snapshot_by_id_v2"]["responses"]["200"]["content"]["application/json"];
+  operations["handle_get_snapshot_history"]["responses"]["200"]["content"]["application/json"]
 
 export const useFetchSnapShotHistory = () => {
   return useQuery(fetchSnapShotHistoryQueryOptions());

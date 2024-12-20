@@ -49,7 +49,7 @@ fn create_snapshot_batch_from_dto(
         .into_iter()
         .filter(|item| item.snap_shot_type == SnapShotType::Old)
         .collect();
-    
+
     let new_images: Vec<SnapShot> = snap_shots
         .clone()
         .into_iter()
@@ -87,9 +87,9 @@ fn create_snapshot_batch_from_dto(
                     .unwrap();
 
                 Some(DiffImage {
-                    new: new_image.path.clone(),
-                    old: old_image.path.clone(),
-                    diff: snap.path.clone(),
+                    new: new_image.into_snapshot_batch_image(),
+                    old: old_image.into_snapshot_batch_image(),
+                    diff: snap.into_snapshot_batch_image(),
                 })
             })
             .collect(),
@@ -98,7 +98,7 @@ fn create_snapshot_batch_from_dto(
             .into_iter()
             .filter_map(|snap| {
                 if snap.snap_shot_type == SnapShotType::Deleted {
-                    return Some(snap.path);
+                    return Some(snap.into_snapshot_batch_image());
                 }
 
                 return None;
@@ -109,7 +109,7 @@ fn create_snapshot_batch_from_dto(
             .into_iter()
             .filter_map(|snap| {
                 if snap.snap_shot_type == SnapShotType::Create {
-                    return Some(snap.path);
+                    return Some(snap.into_snapshot_batch_image());
                 }
 
                 return None;

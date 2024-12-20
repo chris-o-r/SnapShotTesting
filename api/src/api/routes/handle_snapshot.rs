@@ -11,16 +11,15 @@ use uuid::Uuid;
 use crate::api::errors::AppError;
 use crate::api::extractors::ValidateJson;
 use crate::models::app_state::AppState;
-use crate::models::snapshot_batch::{DiffImage, SnapShotBatch};
+use crate::models::snapshot_batch::{DiffImage, SnapShotBatch, SnapShotBatchImage};
 use crate::service::{snapshot_history_service, snapshot_service};
-use crate::utils::compare_images::CompareImagesReturn;
 
 
 #[derive(OpenApi)]
 #[openapi(
     paths(handle_snapshot, handle_get_snapshot_history, handle_get_snapshot_by_id),
     components(
-        schemas(SnapShotParams, CompareImagesReturn, SnapShotBatch, DiffImage),
+        schemas(SnapShotParams, SnapShotBatch, DiffImage, SnapShotBatchImage),
     ),
     tags((name = "Snapshot", description = "All about jobs"))
 )]
@@ -47,7 +46,7 @@ pub struct SnapShotParams {
     path = "/api/snap-shots",
     request_body = SnapShotParams,
     responses(
-        (status = 200, description = "Creates snap shots", body = SnapShotBatchV2),
+        (status = 200, description = "Creates snap shots", body = SnapShotBatch),
     ),
     tag="Snapshot"
 
@@ -91,7 +90,7 @@ async fn handle_get_snapshot_history(
     path = "/api/snap-shots/{id}",
     params(("id", description = "Historical Item Id")),
     responses(
-        (status = 200, description = "Partner account was created", body = Vec<SnapShotBatchV2>),
+        (status = 200, description = "Partner account was created", body = Vec<SnapShotBatch>),
     ),
     tag="Snapshot"
 

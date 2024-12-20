@@ -1,12 +1,14 @@
-use std::path::Path;
+use std::fs;
 
 use crate::{
-    models::snapshot_batch::{DiffImage, SnapShotBatch},
+    models::{
+        raw_image::RawImage,
+        snapshot_batch::{DiffImage, SnapShotBatch, SnapShotBatchImage},
+    },
     utils::{
-        capture_screenshots::{self, RawImage},
+        capture_screenshots::{self},
         compare_images::{self},
         env_variables,
-        save_images::safe_save_image,
         story_book::get_screenshot_params_by_url,
     },
 };
@@ -91,12 +93,10 @@ pub async fn create_snap_shots(
             }
         });
 
-    let diff_images = compare_images::compare_images(
-        images_1_cleaned.clone(),
-        images_2_cleaned.clone(),
-        random_folder_name.as_str(),
-    )
-    .await?;
+    let diff_images: compare_images::CompareImagesReturn =
+        compare_images::compare_images(images_1_cleaned.clone(), images_2_cleaned.clone()).await?;
+
+    create_folders(format!("{}/{}", asset_folder, random_folder_name).as_str())?;
 
     let batch = SnapShotBatch {
         id: batch.id,
@@ -104,70 +104,106 @@ pub async fn create_snap_shots(
         created_at: batch.created_at,
         new_story_book_version: batch.new_story_book_version,
         old_story_book_version: batch.old_story_book_version,
-        created_image_paths: diff_images.created_images_paths,
-        deleted_image_paths: diff_images.deleted_images_paths,
+        created_image_paths: diff_images
+            .created_images_paths
+            .into_iter()
+            .map(|img| {
+                let path = &img
+                    .clone()
+                    .save(format!("{}/created", &random_folder_name).as_str())
+                    .unwrap();
+
+                SnapShotBatchImage {
+                    path: path.to_string(),
+                    width: img.width,
+                    height: img.height,
+                }
+            })
+            .collect(),
+        deleted_image_paths: diff_images
+            .deleted_images_paths
+            .into_iter()
+            .map(|img| {
+                let path = img
+                    .clone()
+                    .save(format!("{}/deleted", &random_folder_name).as_str())
+                    .unwrap();
+
+                SnapShotBatchImage {
+                    path,
+                    width: img.width,
+                    height: img.height,
+                }
+            })
+            .collect(),
         diff_image: diff_images
             .diff_images_paths
             .clone()
             .into_iter()
             .filter_map(|snap| {
-                let image_name = Path::new(&snap)
-                    .file_stem()
-                    .and_then(|os_str| os_str.to_str())
-                    .unwrap();
-
                 let old_image = images_1_cleaned
                     .clone()
                     .into_iter()
-                    .find(|item| {
-                        return item.image_name == image_name;
-                    })
+                    .find(|item| item.image_name == snap.image_name)
                     .unwrap();
 
                 let new_image = images_1_cleaned
                     .clone()
                     .into_iter()
-                    .find(|item| {
-                        return item.image_name == image_name;
-                    })
+                    .find(|item| item.image_name == snap.image_name)
                     .unwrap();
 
-                let image_new_name = safe_save_image(
-                    new_image.raw_image,
-                    format!("{}/new", random_folder_name).as_str(),
-                    &new_image.image_name,
-                );
-                let image_old_name = safe_save_image(
-                    old_image.raw_image,
-                    format!("{}/old", random_folder_name).as_str(),
-                    &old_image.image_name,
-                );
+                let new_image_path = new_image
+                    .clone()
+                    .save(format!("{}/new", random_folder_name).as_str())
+                    .unwrap();
+                let old_image_path = old_image
+                    .clone()
+                    .save(format!("{}/old", random_folder_name).as_str())
+                    .unwrap();
+
+                let diff_path = snap
+                    .clone()
+                    .save(format!("{}/diff", random_folder_name).as_str())
+                    .unwrap();
 
                 Some(DiffImage {
-                    new: image_new_name.unwrap(),
-                    old: image_old_name.unwrap(),
-                    diff: snap.clone(),
+                    new: SnapShotBatchImage {
+                        width: new_image.width,
+                        height: new_image.height,
+                        path: new_image_path,
+                    },
+                    old: SnapShotBatchImage {
+                        width: old_image.width,
+                        height: old_image.height,
+                        path: old_image_path,
+                    },
+                    diff: SnapShotBatchImage {
+                        width: snap.width,
+                        height: snap.height,
+                        path: diff_path,
+                    },
                 })
             })
             .collect(),
     };
 
-    let snap_shot_array = batch.clone().into_snapshots().iter_mut().map(|item| {
-        item.path = item.path.replace(&asset_folder, "assets");
-        item.to_owned()
-    }).collect::<Vec<SnapShot>>();
+    let snap_shot_array = batch
+        .clone()
+        .into_snapshots()
+        .iter_mut()
+        .map(|item| {
+            item.path = item.path.replace(&asset_folder, "assets");
+            item.to_owned()
+        })
+        .collect::<Vec<SnapShot>>();
 
-    snapshot_store::insert_snapshots(
-        &mut transaction,
-        snap_shot_array,
-    )
-    .await?;
+    snapshot_store::insert_snapshots(&mut transaction, snap_shot_array).await?;
 
     transaction.commit().await?;
 
     Ok(batch)
 }
-
 
 async fn handle_snap_shot_for_url(
     url: &str,
@@ -175,7 +211,7 @@ async fn handle_snap_shot_for_url(
 ) -> Result<Vec<Result<RawImage, Error>>, Error> {
     tracing::debug!("Capturing screen shots for url: {}", url);
 
-    let image_params = get_screenshot_params_by_url(url, image_type).await?;
+    let image_params = get_screenshot_params_by_url(url, &image_type).await?;
 
     let results = capture_screenshots::capture_screenshots(&image_params).await?;
 
@@ -189,4 +225,13 @@ async fn handle_snap_shot_for_url(
     );
 
     Ok(results)
+}
+
+fn create_folders(folder_name: &str) -> Result<(), anyhow::Error> {
+    fs::create_dir_all(folder_name)?;
+    fs::create_dir_all(format!("{}/deleted", folder_name))?;
+    fs::create_dir_all(format!("{}/created", folder_name))?;
+    fs::create_dir_all(format!("{}/diff", folder_name))?;
+
+    Ok(())
 }

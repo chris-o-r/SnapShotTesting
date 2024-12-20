@@ -1,19 +1,14 @@
 use std::{env, time::Duration};
 
-
-use crate::models::snapshot::SnapShotType;
+use crate::models::{raw_image::RawImage, snapshot::SnapShotType};
 
 use super::env_variables;
 use anyhow::Error;
 use fantoccini::{Client, ClientBuilder};
 use futures_util::{future::join_all, stream::FuturesUnordered};
 use lazy_static::lazy_static;
-#[derive(Clone, Debug, PartialEq)]
-pub struct RawImage {
-    pub raw_image: Vec<u8>,
-    pub image_type: SnapShotType,
-    pub image_name: String,
-}
+
+
 
 lazy_static! {
     static ref SELENIUM_PORT: String = env::var("SELENIUM_PORT").unwrap();
@@ -35,7 +30,8 @@ pub struct ScreenShotParams {
 }
 
 pub async fn capture_screenshots(
-    urls: &Vec<ScreenShotParams>) -> Result<Vec<Result<RawImage, Error>>, Error> {
+    urls: &Vec<ScreenShotParams>,
+) -> Result<Vec<Result<RawImage, Error>>, Error> {
     let handles = FuturesUnordered::new();
     let mut raw_images: Vec<Result<RawImage, Error>> = vec![];
 
@@ -58,7 +54,8 @@ pub async fn capture_screenshots(
 }
 
 async fn take_screenshots(
-    params: Vec<ScreenShotParams>) -> Result<Vec<Result<RawImage, Error>>, Error> {
+    params: Vec<ScreenShotParams>,
+) -> Result<Vec<Result<RawImage, Error>>, Error> {
     let mut raw_images: Vec<Result<RawImage, Error>> = vec![];
     tracing::debug!("Connecting to selenium");
     let client: Client = connect().await.map_err(|err| {
@@ -67,8 +64,7 @@ async fn take_screenshots(
     })?;
 
     for param in params.into_iter() {
-
-        let screen_shot = capture_screenshot_from_url(&client, param ).await;
+        let screen_shot = capture_screenshot_from_url(&client, param).await;
 
         match screen_shot {
             Ok(screen_shot) => {
@@ -84,12 +80,19 @@ async fn take_screenshots(
     Ok(raw_images)
 }
 
-async fn capture_screenshot_from_url(client: &Client, param: ScreenShotParams) -> Result<RawImage, Error> {
+async fn capture_screenshot_from_url(
+    client: &Client,
+    param: ScreenShotParams,
+) -> Result<RawImage, Error> {
     const TIME_OUT: Duration = std::time::Duration::from_secs(5);
     const INTERVAL: Duration = std::time::Duration::from_millis(500);
 
     client.goto(&param.url).await.map_err(|err| {
-        tracing::error!("Unable to go to URL {} to take screen shot\n{}", &param.url, err);
+        tracing::error!(
+            "Unable to go to URL {} to take screen shot\n{}",
+            &param.url,
+            err
+        );
         err
     })?;
 
@@ -104,19 +107,22 @@ async fn capture_screenshot_from_url(client: &Client, param: ScreenShotParams) -
             err
         })?;
 
-    let screenshot = client
+    let element = client
         .find(fantoccini::Locator::XPath("/html"))
         .await
-        .unwrap()
-        .screenshot()
-        .await?;
+        .unwrap();
+
+    let dimensions = element.rectangle().await?;
+    let screenshot = element.screenshot().await?;
 
     tracing::debug!("Captured sceen shot for {}", &param.url);
 
     Ok(RawImage {
         raw_image: screenshot,
+        width: dimensions.2,
+        height: dimensions.3, 
         image_name: param.id,
-        image_type: param.image_type
+        image_type: param.image_type,
     })
 }
 
@@ -134,10 +140,11 @@ async fn connect() -> Result<Client, Error> {
 
     caps.insert("goog:chromeOptions".to_string(), opts.clone());
 
-    let c: Client = ClientBuilder::native()
+    let c =ClientBuilder::native()
         .capabilities(caps)
         .connect(&SELENIUM_URL)
         .await?;
 
     Ok(c)
+
 }

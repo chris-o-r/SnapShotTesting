@@ -5,8 +5,8 @@ CREATE TABLE snap_shots (
   batch_id UUID NOT NULL,
   name VARCHAR(255) NOT NULL,
   path VARCHAR(255) NOT NULL,
+  width DOUBLE PRECISION NOT NULL,
+  height DOUBLE PRECISION NOT NULL,
   snap_shot_type VARCHAR(255) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE INDEX snap_shots_batch_id_idx ON snap_shots (batch_id);

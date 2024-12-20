@@ -29,7 +29,7 @@ pub struct StoryBookConfigEntry {
 
 pub async fn get_screenshot_params_by_url(
     url: &str,
-    image_type: SnapShotType,
+    image_type: &SnapShotType,
 ) -> Result<Vec<ScreenShotParams>, Error> {
     let story_book_config = get_story_book_config(url).await.map_err(|err| {
         tracing::error!("Failed to get story book config for url {}\n{}", url, err);
@@ -66,18 +66,18 @@ async fn get_story_book_config(url: &str) -> Result<StoryBookConfig, Error> {
 fn get_screen_shot_params_from_config(
     config: StoryBookConfig,
     url: &str,
-    image_type: SnapShotType,
+    image_type: &SnapShotType,
 ) -> Vec<ScreenShotParams> {
     config
         .entries
         .into_iter()
         .map(|entry| ScreenShotParams {
             url: format!(
-                "http://{}/iframe.html?args=&id={}&viewMode=story",
+                "{}/iframe.html?args=&id={}&viewMode=story",
                 url, entry.1.id
             ),
             id: entry.1.id,
-            image_type,
+            image_type: *image_type,
         })
         .collect()
 }

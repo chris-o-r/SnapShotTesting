@@ -23,7 +23,7 @@ services:
       SELENIUM_PORT: 4444
       SELENIUM_HOST: selenium
       ASSETS_FOLDER: /var/lib/snap-shot/data
-      SELENIUM_MAX_INSTANCES: 4
+      SELENIUM_MAX_INSTANCES: 6
     depends_on:
       - postgres
       - selenium
@@ -59,6 +59,6 @@ services:
       - "4444:4444" # Port mapping
       - "7900:7900" # Port mapping
     environment:
-      - SE_NODE_MAX_SESSIONS=5
+      - SE_NODE_MAX_SESSIONS=6
       - SE_NODE_OVERRIDE_MAX_SESSIONS=false
       - SE_SCREEN_DPI=100

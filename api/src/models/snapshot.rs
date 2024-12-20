@@ -5,6 +5,8 @@ use chrono::NaiveDateTime;
 use sqlx::{postgres::PgRow, Row};
 use uuid::Uuid;
 
+use super::snapshot_batch::SnapShotBatchImage;
+
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, sqlx::Type, Copy)]
 #[sqlx(type_name = "snap_shot_type", rename_all = "lowercase")]
 pub enum SnapShotType {
@@ -27,9 +29,21 @@ pub struct SnapShot {
     pub batch_id: Uuid,
     pub name: String,
     pub path: String,
+    pub width: f64,
+    pub height: f64,
     pub snap_shot_type: SnapShotType,
     #[serde(with = "date_format")]
     pub created_at: NaiveDateTime,
+}
+
+impl SnapShot {
+    pub fn into_snapshot_batch_image(&self) -> SnapShotBatchImage {
+        SnapShotBatchImage {
+            path: self.path.to_string(),
+            width: self.width,
+            height: self.height,
+        }
+    }
 }
 
 impl<'r> sqlx::FromRow<'r, PgRow> for SnapShot {
@@ -44,13 +58,16 @@ impl<'r> sqlx::FromRow<'r, PgRow> for SnapShot {
             "Deleted" => SnapShotType::Deleted,
             _ => SnapShotType::New,
         };
+
         Ok(SnapShot {
             id: row.try_get("id")?,
             name: row.try_get("name")?,
             path: row.try_get("path")?,
+            width: row.try_get("width")?,
+            height: row.try_get("height")?,
             created_at: row.try_get("created_at")?,
             batch_id: row.try_get("batch_id")?,
-            snap_shot_type: snap_shot_type,
+            snap_shot_type,
         })
     }
 }
