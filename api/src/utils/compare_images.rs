@@ -1,18 +1,14 @@
 use crate::models::{raw_image::RawImage, snapshot::SnapShotType};
 
 use futures_util::{future::join_all, stream::FuturesUnordered};
-use image::{DynamicImage, ImageFormat};
+use image::{DynamicImage, ImageFormat, Rgba};
 use serde::{Deserialize, Serialize};
 use std::io::Cursor;
+use std::thread::available_parallelism;
 use tokio::task::{self};
 use utoipa::ToSchema;
 
 const DIFF_RATIO_THRESHOLD: f64 = 0.0001;
-
-static RATE: f32 = 100.0 / 256.0;
-
-static NUM_THREADS: usize = 6;
-
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct CategorizedImages {
@@ -32,14 +28,15 @@ pub async fn compare_images(
     image_paths_1: Vec<RawImage>,
     image_paths_2: Vec<RawImage>,
 ) -> Result<CompareImagesReturn, anyhow::Error> {
+    let num_threads = available_parallelism().unwrap().get();
 
     let handles = FuturesUnordered::new();
 
-    let categorized_images = categorize_images(image_paths_1, image_paths_2);
+    let categorized_images = categorize_images(&image_paths_1, &image_paths_2);
 
     for chunk in categorized_images
         .diff_images_paths
-        .chunks(categorized_images.diff_images_paths.len() / NUM_THREADS)
+        .chunks(categorized_images.diff_images_paths.len() / num_threads)
     {
         let chunk: Vec<(RawImage, RawImage)> = chunk.to_vec();
         handles.push(task::spawn(compare_image_chunk(chunk)));
@@ -64,28 +61,29 @@ async fn compare_image_chunk(
 ) -> Result<Vec<RawImage>, anyhow::Error> {
     let result = chunk.into_iter().map(|(raw_image_1, raw_image_2)| {
         let image_result: Result<Option<RawImage>, anyhow::Error> = (|| {
-            let mut image_1 = image::load_from_memory(&raw_image_1.raw_image).map_err(|_| {
+            let image_1 = image::load_from_memory(&raw_image_1.raw_image).map_err(|_| {
                 anyhow::Error::msg(format!("Failed to open image: {}", &raw_image_1.image_name))
             })?;
 
-            let mut image_2 = image::load_from_memory(&raw_image_2.raw_image).map_err(|_| {
+            let image_2 = image::load_from_memory(&raw_image_2.raw_image).map_err(|_| {
                 anyhow::Error::msg(format!("Failed to open image: {}", &raw_image_2.image_name))
             })?;
 
-            let ratio = lcs_image_diff::calculate_diff_ratio(image_1.clone(), image_2.clone());
+            let ratio = diff_img::calculate_diff_ratio(image_1.clone(), image_2.clone());
 
             if ratio < DIFF_RATIO_THRESHOLD {
                 return Ok(None);
             }
 
-            let image = lcs_image_diff::compare(&mut image_1, &mut image_2, RATE).map_err(|e| {
-                tracing::error!(
-                    "Error comparing images \nimage one: {} \nimage two: {}",
-                    raw_image_1.image_name,
-                    raw_image_2.image_name
-                );
-                anyhow::Error::msg(e.to_string())
-            })?;
+            let image = diff_img::mark_diff_with_color(image_1, image_2, Rgba([0, 255, 0, 0]))
+                .map_err(|e| {
+                    tracing::error!(
+                        "Error comparing images \nimage one: {} \nimage two: {}",
+                        raw_image_1.image_name,
+                        raw_image_2.image_name
+                    );
+                    anyhow::Error::msg(e.to_string())
+                })?;
 
             Ok(Some(RawImage {
                 raw_image: image_to_vec_u8(image.clone(), ImageFormat::Png),
@@ -114,8 +112,8 @@ async fn compare_image_chunk(
 }
 
 fn categorize_images(
-    image_paths_1: Vec<RawImage>,
-    image_paths_2: Vec<RawImage>,
+    image_paths_1: &Vec<RawImage>,
+    image_paths_2: &Vec<RawImage>,
 ) -> CategorizedImages {
     let mut created_images: Vec<RawImage> = Vec::new();
     let mut deleted_images: Vec<RawImage> = Vec::new();
@@ -155,7 +153,6 @@ fn categorize_images(
         diff_images_paths: diff_images,
     }
 }
-
 
 fn image_to_vec_u8(image: DynamicImage, format: ImageFormat) -> Vec<u8> {
     let mut buffer = Cursor::new(Vec::new());

@@ -1,9 +1,6 @@
 use sqlx::{Pool, Postgres};
 
-use crate::{
-    db::connection::create_connection_pool,
-    utils::env_variables::EnvVariables,
-};
+use crate::{db::connection::create_connection_pool, utils::env_variables::EnvVariables};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -22,8 +19,6 @@ impl AppState {
             Err(err) => panic!("Cannot connect to postgres database [{}]", err.to_string()),
         };
 
-        Self {
-            db_pool,
-        }
+        Self { db_pool }
     }
 }

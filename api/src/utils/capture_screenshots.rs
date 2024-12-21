@@ -8,8 +8,6 @@ use fantoccini::{Client, ClientBuilder};
 use futures_util::{future::join_all, stream::FuturesUnordered};
 use lazy_static::lazy_static;
 
-
-
 lazy_static! {
     static ref SELENIUM_PORT: String = env::var("SELENIUM_PORT").unwrap();
     static ref SELENIUM_HOST: String = env::var("SELENIUM_HOST").unwrap();
@@ -120,7 +118,7 @@ async fn capture_screenshot_from_url(
     Ok(RawImage {
         raw_image: screenshot,
         width: dimensions.2,
-        height: dimensions.3, 
+        height: dimensions.3,
         image_name: param.id,
         image_type: param.image_type,
     })
@@ -140,11 +138,10 @@ async fn connect() -> Result<Client, Error> {
 
     caps.insert("goog:chromeOptions".to_string(), opts.clone());
 
-    let c =ClientBuilder::native()
+    let c = ClientBuilder::native()
         .capabilities(caps)
         .connect(&SELENIUM_URL)
         .await?;
 
     Ok(c)
-
 }
