@@ -1,6 +1,5 @@
 import { API_BASE_URL } from "@/constants";
-import { Card, Image, Modal } from "antd";
-import { useState } from "react";
+import { Card, Image } from "antd";
 type Props = {
   images: {
     height: number;
