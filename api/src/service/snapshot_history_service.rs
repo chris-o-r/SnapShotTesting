@@ -11,7 +11,7 @@ use crate::{
 };
 
 pub async fn get_snapshot_history(
-    db_pool: sqlx::Pool<sqlx::Postgres>,
+    db_pool: &sqlx::Pool<sqlx::Postgres>,
 ) -> Result<Vec<SnapShotBatch>, Error> {
     let mut result: Vec<SnapShotBatch> = Vec::new();
     let snap_shot_batches = snap_shot_batch_store::get_all_snapshot_batches(&db_pool).await?;
@@ -28,7 +28,7 @@ pub async fn get_snapshot_history(
 
 pub async fn get_snap_shot_batch_by_id(
     id: Uuid,
-    db_pool: sqlx::Pool<sqlx::Postgres>,
+    db_pool: &sqlx::Pool<sqlx::Postgres>,
 ) -> Result<Option<SnapShotBatch>, Error> {
     let batch_dto = match snap_shot_batch_store::get_snap_batch_by_id(&db_pool, &id).await? {
         Some(batch) => batch,

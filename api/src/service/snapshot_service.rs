@@ -30,7 +30,7 @@ use crate::{
 pub async fn create_snap_shots(
     new_url: &str,
     old_url: &str,
-    db_pool: sqlx::Pool<sqlx::Postgres>,
+    db_pool: &sqlx::Pool<sqlx::Postgres>,
 ) -> Result<SnapShotBatch, Error> {
     let asset_folder = env_variables::EnvVariables::new().assets_folder;
 
@@ -108,13 +108,14 @@ pub async fn create_snap_shots(
             .created_images_paths
             .into_iter()
             .map(|img| {
-                let path = &img
+                let path = img
                     .clone()
                     .save(format!("{}/created", &random_folder_name).as_str())
                     .unwrap();
 
                 SnapShotBatchImage {
-                    path: path.to_string(),
+                    name: img.image_name,
+                    path: path,
                     width: img.width,
                     height: img.height,
                 }
@@ -130,6 +131,7 @@ pub async fn create_snap_shots(
                     .unwrap();
 
                 SnapShotBatchImage {
+                    name: img.image_name,
                     path,
                     width: img.width,
                     height: img.height,
@@ -169,16 +171,19 @@ pub async fn create_snap_shots(
 
                 Some(DiffImage {
                     new: SnapShotBatchImage {
+                        name: new_image.image_name,
                         width: new_image.width,
                         height: new_image.height,
                         path: new_image_path,
                     },
                     old: SnapShotBatchImage {
+                        name: old_image.image_name,
                         width: old_image.width,
                         height: old_image.height,
                         path: old_image_path,
                     },
                     diff: SnapShotBatchImage {
+                        name: snap.image_name,
                         width: snap.width,
                         height: snap.height,
                         path: diff_path,

@@ -60,6 +60,7 @@ export interface components {
         SnapShotBatchImage: {
             /** Format: double */
             height: number;
+            name: string;
             path: string;
             /** Format: double */
             width: number;

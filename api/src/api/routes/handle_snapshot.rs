@@ -60,7 +60,7 @@ pub async fn handle_snapshot(
     snapshot_service::create_snap_shots(
         payload.new.as_str(),
         payload.old.as_str(),
-        state.db_pool.clone(),
+        &state.db_pool,
     )
     .await
     .map_err(|e| AppError(e, StatusCode::INTERNAL_SERVER_ERROR))
@@ -78,7 +78,7 @@ pub async fn handle_snapshot(
 async fn handle_get_snapshot_history(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<SnapShotBatch>>, AppError> {
-    let res = snapshot_history_service::get_snapshot_history(state.db_pool.clone())
+    let res = snapshot_history_service::get_snapshot_history(&state.db_pool)
         .await
         .map_err(|e| AppError(e, axum::http::StatusCode::INTERNAL_SERVER_ERROR))?;
 
@@ -100,7 +100,7 @@ async fn handle_get_snapshot_by_id(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<SnapShotBatch>, AppError> {
     let result: Option<SnapShotBatch> =
-        snapshot_history_service::get_snap_shot_batch_by_id(id, state.db_pool.clone()).await?;
+        snapshot_history_service::get_snap_shot_batch_by_id(id, &state.db_pool).await?;
 
     if result.is_some() {
         return Ok(Json(result.unwrap()));

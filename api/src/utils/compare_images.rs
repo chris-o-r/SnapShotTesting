@@ -75,6 +75,10 @@ async fn compare_image_chunk(
                 return Ok(None);
             }
 
+            if image_1.width() != image_2.width() || image_1.height() != image_2.height() {
+                return Ok(None);
+            }
+
             let image = diff_img::mark_diff_with_color(image_1, image_2, Rgba([0, 255, 0, 0]))
                 .map_err(|e| {
                     tracing::error!(

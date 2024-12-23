@@ -1,8 +1,7 @@
-use std::{env, time::Duration};
+use std::{env, thread::available_parallelism, time::Duration};
 
 use crate::models::{raw_image::RawImage, snapshot::SnapShotType};
 
-use super::env_variables;
 use anyhow::Error;
 use fantoccini::{Client, ClientBuilder};
 use futures_util::{future::join_all, stream::FuturesUnordered};
@@ -16,8 +15,6 @@ lazy_static! {
         SELENIUM_HOST.as_str(),
         SELENIUM_PORT.as_str()
     );
-    static ref SELENIUM_MAX_INSTANCES: usize =
-        env_variables::EnvVariables::new().selenium_max_instances;
 }
 
 #[derive(Clone)]
@@ -25,6 +22,7 @@ pub struct ScreenShotParams {
     pub url: String,
     pub id: String,
     pub image_type: SnapShotType,
+    pub name: String
 }
 
 pub async fn capture_screenshots(
@@ -33,7 +31,7 @@ pub async fn capture_screenshots(
     let handles = FuturesUnordered::new();
     let mut raw_images: Vec<Result<RawImage, Error>> = vec![];
 
-    let chunk_size = urls.len() / *SELENIUM_MAX_INSTANCES;
+    let chunk_size = urls.len() / available_parallelism().unwrap().get();
 
     for chunk in urls.chunks(chunk_size) {
         let chunk = chunk.to_vec();
@@ -119,7 +117,7 @@ async fn capture_screenshot_from_url(
         raw_image: screenshot,
         width: dimensions.2,
         height: dimensions.3,
-        image_name: param.id,
+        image_name: param.name,
         image_type: param.image_type,
     })
 }
