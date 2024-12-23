@@ -7,7 +7,6 @@ export default function Navigation() {
   const navigate = useNavigate();
   const { navigationItems} = useNavigation()
 
-
   const pathName = window.location.pathname;
 
   const currentMenuItemKey = useMemo(() => {

@@ -10,6 +10,7 @@ use super::snapshot::{SnapShot, SnapShotType};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, ToSchema)]
 pub struct SnapShotBatchImage {
+    pub name: String,
     pub path: String,
     pub width: f64,
     pub height: f64,

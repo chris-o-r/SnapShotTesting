@@ -76,6 +76,7 @@ fn get_screen_shot_params_from_config(
                 "{}/iframe.html?args=&id={}&viewMode=story",
                 url, entry.1.id
             ),
+            name: entry.1.id.clone(),
             id: entry.1.id,
             image_type: *image_type,
         })

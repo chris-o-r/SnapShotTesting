@@ -8,12 +8,12 @@ export const DiffImageTab = ({ diffImages }: Props) => {
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold">Diff Images</h2>
-      {diffImages.map(({diff, new: newImage, old}) => {
+      {diffImages.map(({diff, new: newImage, old,}) => {
         return (
           <Card
             key={diff.path}
             className="space-y-2"
-            title={diff.path.split("/")[diff.path.split("/").length - 1]}
+            title={diff.name}
           >
             <Splitter style={{ boxShadow: "0 0 10px rgba(0, 0, 0, 0.1)" }}>
               <Splitter.Panel>

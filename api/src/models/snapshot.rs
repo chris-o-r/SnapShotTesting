@@ -39,6 +39,7 @@ pub struct SnapShot {
 impl SnapShot {
     pub fn into_snapshot_batch_image(&self) -> SnapShotBatchImage {
         SnapShotBatchImage {
+            name: self.name.to_string(),
             path: self.path.to_string(),
             width: self.width,
             height: self.height,
