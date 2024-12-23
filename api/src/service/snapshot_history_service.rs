@@ -56,6 +56,12 @@ fn create_snapshot_batch_from_dto(
         .filter(|item| item.snap_shot_type == SnapShotType::New)
         .collect();
 
+    let lcs_diffs: Vec<SnapShot> = snap_shots
+        .clone()
+        .into_iter()
+        .filter(|item| item.snap_shot_type == SnapShotType::LcsDiff)
+        .collect();
+
     SnapShotBatch {
         id: snap_shot_batch_dto.id,
         name: snap_shot_batch_dto.name,
@@ -65,8 +71,8 @@ fn create_snapshot_batch_from_dto(
         diff_image: snap_shots
             .clone()
             .into_iter()
-            .filter_map(|snap| {
-                if snap.snap_shot_type != SnapShotType::Diff {
+            .filter_map(|color_diff| {
+                if color_diff.snap_shot_type != SnapShotType::ColorDiff {
                     return None;
                 }
 
@@ -74,7 +80,7 @@ fn create_snapshot_batch_from_dto(
                     .clone()
                     .into_iter()
                     .find(|item| {
-                        return item.name == snap.name;
+                        return item.name == color_diff.name;
                     })
                     .unwrap();
 
@@ -82,14 +88,21 @@ fn create_snapshot_batch_from_dto(
                     .clone()
                     .into_iter()
                     .find(|item| {
-                        return item.name == snap.name;
+                        return item.name == color_diff.name;
                     })
+                    .unwrap();
+
+                let lcs_image = lcs_diffs
+                    .clone()
+                    .into_iter()
+                    .find(|item| item.name == color_diff.name)
                     .unwrap();
 
                 Some(DiffImage {
                     new: new_image.into_snapshot_batch_image(),
                     old: old_image.into_snapshot_batch_image(),
-                    diff: snap.into_snapshot_batch_image(),
+                    color_diff: color_diff.into_snapshot_batch_image(),
+                    lcs_diff: lcs_image.into_snapshot_batch_image(),
                 })
             })
             .collect(),

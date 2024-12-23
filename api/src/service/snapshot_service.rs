@@ -143,17 +143,19 @@ pub async fn create_snap_shots(
             .diff_images_paths
             .clone()
             .into_iter()
-            .filter_map(|snap| {
+            .filter_map(|(color_image, lcs_image)| {
+                let image_name = color_image.image_name.clone();
+
                 let old_image = images_before_cleaned
                     .clone()
                     .into_iter()
-                    .find(|item| item.image_name == snap.image_name)
+                    .find(|item| item.image_name == image_name)
                     .unwrap();
 
                 let new_image = images_after_cleaned
                     .clone()
                     .into_iter()
-                    .find(|item| item.image_name == snap.image_name)
+                    .find(|item| item.image_name == image_name)
                     .unwrap();
 
                 let new_image_path = new_image
@@ -165,9 +167,14 @@ pub async fn create_snap_shots(
                     .save(format!("{}/old", random_folder_name).as_str())
                     .unwrap();
 
-                let diff_path = snap
+                let color_diff_path = color_image
                     .clone()
-                    .save(format!("{}/diff", random_folder_name).as_str())
+                    .save(format!("{}/diff/color", random_folder_name).as_str())
+                    .unwrap();
+
+                let lcs_diff_path = lcs_image
+                    .clone()
+                    .save(format!("{}/diff/lcs", random_folder_name).as_str())
                     .unwrap();
 
                 Some(DiffImage {
@@ -183,11 +190,17 @@ pub async fn create_snap_shots(
                         height: old_image.height,
                         path: old_image_path,
                     },
-                    diff: SnapShotBatchImage {
-                        name: snap.image_name,
-                        width: snap.width,
-                        height: snap.height,
-                        path: diff_path,
+                    color_diff: SnapShotBatchImage {
+                        name: image_name,
+                        width: color_image.width,
+                        height: color_image.height,
+                        path: color_diff_path,
+                    },
+                    lcs_diff: SnapShotBatchImage {
+                        name: lcs_image.image_name,
+                        width: lcs_image.width,
+                        height: lcs_image.height,
+                        path: lcs_diff_path,
                     },
                 })
             })

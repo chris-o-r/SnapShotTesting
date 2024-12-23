@@ -41,7 +41,8 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         DiffImage: {
-            diff: components["schemas"]["SnapShotBatchImage"];
+            color_diff: components["schemas"]["SnapShotBatchImage"];
+            lcs_diff: components["schemas"]["SnapShotBatchImage"];
             new: components["schemas"]["SnapShotBatchImage"];
             old: components["schemas"]["SnapShotBatchImage"];
         };
