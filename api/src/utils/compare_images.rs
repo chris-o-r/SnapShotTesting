@@ -79,15 +79,16 @@ async fn compare_image_chunk(
                 return Ok(None);
             }
 
-            let image = diff_img::mark_diff_with_color(image_1, image_2, Rgba([0, 255, 0, 0]))
-                .map_err(|e| {
-                    tracing::error!(
-                        "Error comparing images \nimage one: {} \nimage two: {}",
-                        raw_image_1.image_name,
-                        raw_image_2.image_name
-                    );
-                    anyhow::Error::msg(e.to_string())
-                })?;
+            let image =
+                diff_img::highlight_changes_with_color(image_1, image_2, Rgba([0, 255, 0, 0]))
+                    .map_err(|e| {
+                        tracing::error!(
+                            "Error comparing images \nimage one: {} \nimage two: {}",
+                            raw_image_1.image_name,
+                            raw_image_2.image_name
+                        );
+                        anyhow::Error::msg(e.to_string())
+                    })?;
 
             Ok(Some(RawImage {
                 raw_image: image_to_vec_u8(image.clone(), ImageFormat::Png),

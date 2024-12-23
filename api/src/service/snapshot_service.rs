@@ -71,22 +71,22 @@ pub async fn create_snap_shots(
        from array 2 at the same index and vice versa
     */
 
-    let mut images_1_cleaned: Vec<RawImage> = vec![];
-    let mut images_2_cleaned: Vec<RawImage> = vec![];
+    let mut images_before_cleaned: Vec<RawImage> = vec![];
+    let mut images_after_cleaned: Vec<RawImage> = vec![];
 
     images_1
         .into_iter()
         .zip(images_2.iter())
         .for_each(|(image_1, image_2)| match (image_1, image_2) {
             (Ok(img_1), Ok(img_2)) => {
-                images_1_cleaned.push(img_1);
-                images_2_cleaned.push(img_2.clone());
+                images_before_cleaned.push(img_1);
+                images_after_cleaned.push(img_2.clone());
             }
             (Err(_), Ok(img_2)) => {
-                images_2_cleaned.push(img_2.clone());
+                images_after_cleaned.push(img_2.clone());
             }
             (Ok(img_1), Err(_)) => {
-                images_1_cleaned.push(img_1);
+                images_before_cleaned.push(img_1);
             }
             (Err(_), Err(_)) => {
                 // Do nothing
@@ -94,7 +94,8 @@ pub async fn create_snap_shots(
         });
 
     let diff_images: compare_images::CompareImagesReturn =
-        compare_images::compare_images(images_1_cleaned.clone(), images_2_cleaned.clone()).await?;
+        compare_images::compare_images(images_before_cleaned.clone(), images_after_cleaned.clone())
+            .await?;
 
     create_folders(format!("{}/{}", asset_folder, random_folder_name).as_str())?;
 
@@ -143,13 +144,13 @@ pub async fn create_snap_shots(
             .clone()
             .into_iter()
             .filter_map(|snap| {
-                let old_image = images_1_cleaned
+                let old_image = images_before_cleaned
                     .clone()
                     .into_iter()
                     .find(|item| item.image_name == snap.image_name)
                     .unwrap();
 
-                let new_image = images_1_cleaned
+                let new_image = images_after_cleaned
                     .clone()
                     .into_iter()
                     .find(|item| item.image_name == snap.image_name)

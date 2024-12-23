@@ -8,22 +8,27 @@ export const DiffImageTab = ({ diffImages }: Props) => {
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold">Diff Images</h2>
-      {diffImages.map(({diff, new: newImage, old,}) => {
+      {diffImages.map(({ diff, new: newImage, old }) => {
         return (
-          <Card
-            key={diff.path}
-            className="space-y-2"
-            title={diff.name}
-          >
+          <Card key={diff.path} className="space-y-2" title={diff.name}>
             <Splitter style={{ boxShadow: "0 0 10px rgba(0, 0, 0, 0.1)" }}>
               <Splitter.Panel>
-                <Image width={newImage.width} alt="sds" src={`${API_BASE_URL}/${newImage.path}`} />
+                <Image
+                  alt={`new-${newImage.path}`}
+                  src={`${API_BASE_URL}/${newImage.path}`}
+                />
               </Splitter.Panel>
               <Splitter.Panel>
-                <Image width={diff.width} alt="sds" src={`${API_BASE_URL}/${diff.path}`} />
+                <Image
+                  alt={`diff-${diff.path}`}
+                  src={`${API_BASE_URL}/${diff.path}`}
+                />
               </Splitter.Panel>
               <Splitter.Panel>
-                <Image width={newImage.width} alt="sds" src={`${API_BASE_URL}/${old.path}`} />
+                <Image
+                  alt={`new-${old.path}`}
+                  src={`${API_BASE_URL}/${old.path}`}
+                />
               </Splitter.Panel>
             </Splitter>
           </Card>
