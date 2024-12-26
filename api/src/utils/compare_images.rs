@@ -9,6 +9,7 @@ use tokio::task::{self};
 use utoipa::ToSchema;
 
 const DIFF_RATIO_THRESHOLD: f64 = 0.0001;
+static RATE: f32 = 100.0 / 256.0;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct CategorizedImages {
@@ -21,7 +22,7 @@ pub struct CategorizedImages {
 pub struct CompareImagesReturn {
     pub created_images_paths: Vec<RawImage>,
     pub deleted_images_paths: Vec<RawImage>,
-    pub diff_images_paths: Vec<RawImage>,
+    pub diff_images_paths: Vec<(RawImage, RawImage)>,
 }
 
 pub async fn compare_images(
@@ -47,7 +48,7 @@ pub async fn compare_images(
         .into_iter()
         .map(|handle| handle.unwrap())
         .flat_map(|arr| arr.unwrap())
-        .collect::<Vec<RawImage>>();
+        .collect::<Vec<(RawImage, RawImage)>>();
 
     Ok(CompareImagesReturn {
         created_images_paths: categorized_images.created_images_paths.clone(),
@@ -58,14 +59,14 @@ pub async fn compare_images(
 
 async fn compare_image_chunk(
     chunk: Vec<(RawImage, RawImage)>,
-) -> Result<Vec<RawImage>, anyhow::Error> {
+) -> Result<Vec<(RawImage, RawImage)>, anyhow::Error> {
     let result = chunk.into_iter().map(|(raw_image_1, raw_image_2)| {
-        let image_result: Result<Option<RawImage>, anyhow::Error> = (|| {
-            let image_1 = image::load_from_memory(&raw_image_1.raw_image).map_err(|_| {
+        let image_result: Result<Option<(RawImage, RawImage)>, anyhow::Error> = (|| {
+            let mut image_1 = image::load_from_memory(&raw_image_1.raw_image).map_err(|_| {
                 anyhow::Error::msg(format!("Failed to open image: {}", &raw_image_1.image_name))
             })?;
 
-            let image_2 = image::load_from_memory(&raw_image_2.raw_image).map_err(|_| {
+            let mut image_2 = image::load_from_memory(&raw_image_2.raw_image).map_err(|_| {
                 anyhow::Error::msg(format!("Failed to open image: {}", &raw_image_2.image_name))
             })?;
 
@@ -79,24 +80,45 @@ async fn compare_image_chunk(
                 return Ok(None);
             }
 
-            let image =
-                diff_img::highlight_changes_with_color(image_1, image_2, Rgba([0, 255, 0, 0]))
-                    .map_err(|e| {
-                        tracing::error!(
-                            "Error comparing images \nimage one: {} \nimage two: {}",
-                            raw_image_1.image_name,
-                            raw_image_2.image_name
-                        );
-                        anyhow::Error::msg(e.to_string())
-                    })?;
+            let color_diff = diff_img::highlight_changes_with_color(
+                image_1.clone(),
+                image_2.clone(),
+                Rgba([0, 255, 0, 0]),
+            )
+            .map_err(|e| {
+                tracing::error!(
+                    "Error comparing images \nimage one: {} \nimage two: {}",
+                    raw_image_1.image_name,
+                    raw_image_2.image_name
+                );
+                anyhow::Error::msg(e.to_string())
+            })?;
 
-            Ok(Some(RawImage {
-                raw_image: image_to_vec_u8(image.clone(), ImageFormat::Png),
-                image_name: raw_image_1.image_name,
-                image_type: SnapShotType::New,
-                height: image.height() as f64,
-                width: image.width() as f64,
-            }))
+            let lcs_diff = diff_img::lcs_diff(&mut image_1, &mut image_2, RATE).map_err(|e| {
+                tracing::error!(
+                    "Error comparing images \nimage one: {} \nimage two: {}",
+                    raw_image_1.image_name,
+                    raw_image_2.image_name
+                );
+                anyhow::Error::msg(e.to_string())
+            })?;
+
+            Ok(Some((
+                RawImage {
+                    raw_image: image_to_vec_u8(color_diff.clone(), ImageFormat::Png),
+                    image_name: raw_image_1.image_name.clone(),
+                    image_type: SnapShotType::ColorDiff,
+                    height: color_diff.height() as f64,
+                    width: color_diff.width() as f64,
+                },
+                RawImage {
+                    raw_image: image_to_vec_u8(lcs_diff.clone(), ImageFormat::Png),
+                    image_name: raw_image_1.image_name,
+                    image_type: SnapShotType::LcsDiff,
+                    height: lcs_diff.height() as f64,
+                    width: lcs_diff.width() as f64,
+                },
+            )))
         })();
 
         image_result
@@ -111,7 +133,7 @@ async fn compare_image_chunk(
                 None
             }
         })
-        .collect::<Vec<RawImage>>();
+        .collect::<Vec<(RawImage, RawImage)>>();
 
     Ok(filtered_result)
 }

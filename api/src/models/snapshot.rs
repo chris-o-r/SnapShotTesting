@@ -12,7 +12,8 @@ use super::snapshot_batch::SnapShotBatchImage;
 pub enum SnapShotType {
     New,
     Old,
-    Diff,
+    ColorDiff,
+    LcsDiff,
     Create,
     Deleted,
 }
@@ -54,7 +55,8 @@ impl<'r> sqlx::FromRow<'r, PgRow> for SnapShot {
         let snap_shot_type = match snap_shot_type_dto.as_str() {
             "New" => SnapShotType::New,
             "Old" => SnapShotType::Old,
-            "Diff" => SnapShotType::Diff,
+            "ColorDiff" => SnapShotType::ColorDiff,
+            "LcsDiff" => SnapShotType::LcsDiff,
             "Create" => SnapShotType::Create,
             "Deleted" => SnapShotType::Deleted,
             _ => SnapShotType::New,

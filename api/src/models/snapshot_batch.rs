@@ -1,4 +1,3 @@
-
 use crate::utils::date_format;
 use axum::{body::Body, http::Response, response::IntoResponse};
 use chrono::NaiveDateTime;
@@ -58,7 +57,7 @@ impl SnapShotBatch {
         snap_shots.extend(
             self.diff_image
                 .iter()
-                .map(|item| item.diff.clone())
+                .map(|item| item.color_diff.clone())
                 .map(|item| SnapShot {
                     id: uuid::Uuid::new_v4(),
                     created_at: self.created_at,
@@ -67,7 +66,22 @@ impl SnapShotBatch {
                     width: item.width,
                     height: item.height,
                     name: item.path.split('/').last().unwrap().to_string(),
-                    snap_shot_type: SnapShotType::Diff,
+                    snap_shot_type: SnapShotType::ColorDiff,
+                }),
+        );
+        snap_shots.extend(
+            self.diff_image
+                .iter()
+                .map(|item| item.lcs_diff.clone())
+                .map(|item| SnapShot {
+                    id: uuid::Uuid::new_v4(),
+                    created_at: self.created_at,
+                    batch_id: self.id,
+                    path: item.path.clone(),
+                    width: item.width,
+                    height: item.height,
+                    name: item.path.split('/').last().unwrap().to_string(),
+                    snap_shot_type: SnapShotType::LcsDiff,
                 }),
         );
 
@@ -109,7 +123,8 @@ impl SnapShotBatch {
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone, ToSchema)]
 pub struct DiffImage {
-    pub diff: SnapShotBatchImage,
+    pub color_diff: SnapShotBatchImage,
+    pub lcs_diff: SnapShotBatchImage,
     pub new: SnapShotBatchImage,
     pub old: SnapShotBatchImage,
 }
