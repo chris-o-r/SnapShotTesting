@@ -13,7 +13,7 @@ services:
     environment:
       BASE_URL: 0.0.0.0
       PORT: 8080
-      DB_NAME: mydatabase
+      DB_NAME: snapshots
       DB_USER: myuser
       DB_PASSWORD: mypassword
       DB_HOST: postgres
@@ -50,7 +50,7 @@ services:
     volumes:
       - ../postrgress/pgdata:/var/lib/postgresql/data
   selenium:
-    image: selenium/standalone-chrome:latest # Using the specified image
+    image: selenium/standalone-chrome:131.0 # Using the specified image
     platform: linux/x86_64
     shm_size: "4g" # Shared memory size
     dns:
