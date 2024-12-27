@@ -88,6 +88,7 @@ export const StartPage = () => {
             <Button
               type="primary"
               htmlType="submit"
+              
               onClick={handleSubmit(onSubmit)}
             >
               Submit

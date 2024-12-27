@@ -16,7 +16,7 @@ export default function CompareImagesHistoricalPage() {
    setNavigationItems([
      {
        label: "Back",
-       href: "/",
+       href: "/compare/historical",
        key: "1",
        icon: <ArrowLeftOutlined />,
      },
