@@ -1,5 +1,7 @@
-{
-    "cSpell.words": [
-        "pthread"
-    ]
+    {
+    "files.exclude": {
+        ".git": false,
+        "target": true
+
+    }
 }
