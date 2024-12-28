@@ -11,7 +11,6 @@ impl AppState {
     pub async fn new() -> Self {
         let env_variables = EnvVariables::new();
         let db_url = env_variables.db_config.get_db_url();
-        println!("DB URL: {}", db_url);
         let pool = create_connection_pool(&db_url).await;
 
         let db_pool: Pool<Postgres> = match pool {
