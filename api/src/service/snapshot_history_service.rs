@@ -6,7 +6,7 @@ use anyhow::Error;
 use uuid::Uuid;
 
 use crate::{
-    db::{snap_shot_batch_store, snapshot_store::get_all_snapshots_by_batch_id},
+    db::{snapshot_batch_store, snapshot_store::get_all_snapshots_by_batch_id},
     models::{
         snapshot::{SnapShot, SnapShotType},
         snapshot_batch::SnapShotBatchDTO,
@@ -17,7 +17,7 @@ pub async fn get_snapshot_history(
     db_pool: &sqlx::Pool<sqlx::Postgres>,
 ) -> Result<Vec<SnapShotBatch>, Error> {
     let mut result: Vec<SnapShotBatch> = Vec::new();
-    let snap_shot_batches = snap_shot_batch_store::get_all_snapshot_batches(&db_pool).await?;
+    let snap_shot_batches = snapshot_batch_store::get_all_snapshot_batches(&db_pool).await?;
 
     for batch in snap_shot_batches {
         let snap_shots = get_all_snapshots_by_batch_id(&db_pool, &batch.id).await?;
@@ -33,7 +33,7 @@ pub async fn get_snap_shot_batch_by_id(
     id: Uuid,
     db_pool: &sqlx::Pool<sqlx::Postgres>,
 ) -> Result<Option<SnapShotBatch>, Error> {
-    let batch_dto = match snap_shot_batch_store::get_snap_batch_by_id(&db_pool, &id).await? {
+    let batch_dto = match snapshot_batch_store::get_snap_batch_by_id(&db_pool, &id).await? {
         Some(batch) => batch,
         None => return Ok(None),
     };
@@ -50,7 +50,7 @@ pub async fn delete_snapshot_batch_by_id(
     let mut transaction: sqlx::Transaction<'_, sqlx::Postgres> = db_pool.begin().await?;
 
     let batch_deletion =
-        snap_shot_batch_store::delete_snapshot_batches_by_id(&mut transaction, &id).await?;
+        snapshot_batch_store::delete_snapshot_batches_by_id(&mut transaction, &id).await?;
 
     let snapshots_deletion =
         snapshot_store::delete_all_snapshots_by_id(&mut transaction, &id).await?;
@@ -160,5 +160,5 @@ fn create_snapshot_batch_from_dto(
 }
 
 pub async fn delete_all_batches(db_pool: sqlx::Pool<sqlx::Postgres>) -> Result<(), anyhow::Error> {
-    snap_shot_batch_store::delete_all_snapshot_batches(&db_pool).await
+    snapshot_batch_store::delete_all_snapshot_batches(&db_pool).await
 }
