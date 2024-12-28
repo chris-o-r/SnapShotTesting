@@ -1,4 +1,7 @@
-use crate::models::snapshot_batch::{DiffImage, SnapShotBatch};
+use crate::{
+    db::snapshot_store,
+    models::snapshot_batch::{DiffImage, SnapShotBatch},
+};
 use anyhow::Error;
 use uuid::Uuid;
 
@@ -38,6 +41,31 @@ pub async fn get_snap_shot_batch_by_id(
     let snap_shots = get_all_snapshots_by_batch_id(&db_pool, &batch_dto.id).await?;
 
     Ok(Some(create_snapshot_batch_from_dto(batch_dto, snap_shots)))
+}
+
+pub async fn delete_snapshot_batch_by_id(
+    id: Uuid,
+    db_pool: &sqlx::Pool<sqlx::Postgres>,
+) -> Result<Option<SnapShotBatch>, Error> {
+    let mut transaction: sqlx::Transaction<'_, sqlx::Postgres> = db_pool.begin().await?;
+
+    let batch_deletion =
+        snap_shot_batch_store::delete_snapshot_batches_by_id(&mut transaction, &id).await?;
+
+    let snapshots_deletion =
+        snapshot_store::delete_all_snapshots_by_id(&mut transaction, &id).await?;
+
+    if snapshots_deletion.is_none() || batch_deletion.is_none() {
+        transaction.rollback().await?;
+        tracing::error!("Cannot delete snap shot batch by id: {}. Wrong ID", id);
+        return Ok(None);
+    }
+    transaction.commit().await?;
+
+    Ok(Some(create_snapshot_batch_from_dto(
+        batch_deletion.unwrap(),
+        snapshots_deletion.unwrap(),
+    )))
 }
 
 fn create_snapshot_batch_from_dto(

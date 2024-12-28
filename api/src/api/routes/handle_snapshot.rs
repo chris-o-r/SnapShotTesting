@@ -1,19 +1,18 @@
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::{routing, Json, Router};
-use axum::extract::{Path, State};
 
 use serde::Deserialize;
-use validator::Validate;
 use std::sync::Arc;
 use utoipa::{OpenApi, ToSchema};
 use uuid::Uuid;
+use validator::Validate;
 
 use crate::api::errors::AppError;
 use crate::api::extractors::ValidateJson;
 use crate::models::app_state::AppState;
 use crate::models::snapshot_batch::{DiffImage, SnapShotBatch, SnapShotBatchImage};
 use crate::service::{snapshot_history_service, snapshot_service};
-
 
 #[derive(OpenApi)]
 #[openapi(
@@ -30,8 +29,8 @@ pub fn router() -> Router<Arc<AppState>> {
         .route("/", routing::post(handle_snapshot))
         .route("/", routing::get(handle_get_snapshot_history))
         .route("/:id", routing::get(handle_get_snapshot_by_id))
+        .route("/:id", routing::delete(handle_delete_snapshot_by_id))
 }
-
 
 #[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct SnapShotParams {
@@ -55,15 +54,9 @@ pub async fn handle_snapshot(
     State(state): State<Arc<AppState>>,
     ValidateJson(payload): ValidateJson<SnapShotParams>,
 ) -> Result<SnapShotBatch, AppError> {
-
-    
-    snapshot_service::create_snap_shots(
-        payload.new.as_str(),
-        payload.old.as_str(),
-        &state.db_pool,
-    )
-    .await
-    .map_err(|e| AppError(e, StatusCode::INTERNAL_SERVER_ERROR))
+    snapshot_service::create_snap_shots(payload.new.as_str(), payload.old.as_str(), &state.db_pool)
+        .await
+        .map_err(|e| AppError(e, StatusCode::INTERNAL_SERVER_ERROR))
 }
 
 #[utoipa::path(
@@ -90,7 +83,7 @@ async fn handle_get_snapshot_history(
     path = "/api/snap-shots/{id}",
     params(("id", description = "Historical Item Id")),
     responses(
-        (status = 200, description = "Partner account was created", body = Vec<SnapShotBatch>),
+        (status = 200, description = "Get snapshot batch by id", body = Vec<SnapShotBatch>),
     ),
     tag="Snapshot"
 
@@ -112,3 +105,27 @@ async fn handle_get_snapshot_by_id(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/snap-shots/{id}",
+    params(("id", description = "Historical Item Id")),
+    responses(
+        (status = 200, description = "Delete snapshot batch by id", body = Vec<SnapShotBatch>),
+    ),
+    tag="Snapshot"
+
+)]
+async fn handle_delete_snapshot_by_id(
+    Path(id): Path<Uuid>,
+    State(state): State<Arc<AppState>>,
+) -> Result<StatusCode, AppError> {
+    let result = snapshot_history_service::delete_snapshot_batch_by_id(id, &state.db_pool).await?;
+
+    match result {
+        Some(_) => Ok(StatusCode::NO_CONTENT),
+        None => Err(AppError(
+            anyhow::Error::msg(format!("Snap shot batch with id {} not found", id)),
+            axum::http::StatusCode::NOT_FOUND,
+        )),
+    }
+}

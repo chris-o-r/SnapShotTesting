@@ -113,3 +113,28 @@ pub async fn delete_all_snapshots(pool: &Pool<Postgres>) -> Result<(), anyhow::E
 
     Ok(())
 }
+
+pub async fn delete_all_snapshots_by_id(
+    transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: &uuid::Uuid,
+) -> Result<Option<Vec<SnapShot>>, anyhow::Error> {
+    let sql = r"
+    DELETE FROM snap_shots  
+    WHERE batch_id = $1
+    RETURNING *;";
+
+    let val = sqlx::query_as::<_, SnapShot>(sql)
+        .bind(id)
+        .fetch_all(&mut **transaction)
+        .await
+        .map_err(|err| {
+            tracing::error!("Cannot delete all snap shots by id: {}", err.to_string());
+            anyhow::Error::from(err)
+        })?;
+
+    if val.is_empty() {
+        return Ok(None);
+    }
+
+    Ok(Some(val))
+}
