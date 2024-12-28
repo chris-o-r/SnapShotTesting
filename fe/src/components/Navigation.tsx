@@ -1,54 +1,32 @@
-import {
-  DeliveredProcedureOutlined,
-  HistoryOutlined,
-  HomeOutlined,
-} from "@ant-design/icons";
+import { useNavigation } from "@/context/navigationContext";
 import { Menu } from "antd";
-import { MenuItemType } from "antd/es/menu/interface";
 import { useMemo } from "react";
 import { matchPath, useNavigate } from "react-router-dom";
 
-type MenuItem = MenuItemType & { href: string };
-
 export default function Navigation() {
   const navigate = useNavigate();
-  const menuItems: MenuItem[] = [
-    {
-      label: "Home",
-      href: "/",
-      key: "1",
-      icon: <HomeOutlined />,
-      onClick: () => navigate("/"),
-    },
-    {
-      label: "Historical",
-      key: "2",
-      href: "/compare/historical",
-      icon: <HistoryOutlined />,
-      onClick: () => navigate("/compare/historical"),
-    },
-    {
-      label: "Jobs",
-      key: "3",
-      href: "/jobs",
-      icon: <DeliveredProcedureOutlined />,
-      onClick: () => navigate("/jobs"),
-    },
-  ];
+  const { navigationItems} = useNavigation()
+
   const pathName = window.location.pathname;
 
   const currentMenuItemKey = useMemo(() => {
-    const currentMenuItem = menuItems.find((item) =>
+    const currentMenuItem = navigationItems.find((item) =>
       matchPath(pathName ?? "", item.href)
     );
 
     return currentMenuItem?.key;
   }, [pathName]);
 
+
   return (
     <Menu
       theme="dark"
-      items={menuItems}
+      items={navigationItems.map(item =>  {
+       return item = {
+          ...item,
+          onClick: () => navigate(item.href)
+        }
+      })}
       style={{ height: "100%" }}
       defaultSelectedKeys={["1"]}
       defaultOpenKeys={["diff_images_paths"]}

@@ -1,4 +1,7 @@
-use crate::utils::compare_images::CompareImagesReturn;
+use crate::{
+    db::snapshot_store,
+    models::snapshot_batch::{DiffImage, SnapShotBatch},
+};
 use anyhow::Error;
 use uuid::Uuid;
 
@@ -6,12 +9,12 @@ use crate::{
     db::{snap_shot_batch_store, snapshot_store::get_all_snapshots_by_batch_id},
     models::{
         snapshot::{SnapShot, SnapShotType},
-        snapshot_batch::{SnapShotBatch, SnapShotBatchDTO},
+        snapshot_batch::SnapShotBatchDTO,
     },
 };
 
 pub async fn get_snapshot_history(
-    db_pool: sqlx::Pool<sqlx::Postgres>,
+    db_pool: &sqlx::Pool<sqlx::Postgres>,
 ) -> Result<Vec<SnapShotBatch>, Error> {
     let mut result: Vec<SnapShotBatch> = Vec::new();
     let snap_shot_batches = snap_shot_batch_store::get_all_snapshot_batches(&db_pool).await?;
@@ -28,7 +31,7 @@ pub async fn get_snapshot_history(
 
 pub async fn get_snap_shot_batch_by_id(
     id: Uuid,
-    db_pool: sqlx::Pool<sqlx::Postgres>,
+    db_pool: &sqlx::Pool<sqlx::Postgres>,
 ) -> Result<Option<SnapShotBatch>, Error> {
     let batch_dto = match snap_shot_batch_store::get_snap_batch_by_id(&db_pool, &id).await? {
         Some(batch) => batch,
@@ -40,47 +43,122 @@ pub async fn get_snap_shot_batch_by_id(
     Ok(Some(create_snapshot_batch_from_dto(batch_dto, snap_shots)))
 }
 
+pub async fn delete_snapshot_batch_by_id(
+    id: Uuid,
+    db_pool: &sqlx::Pool<sqlx::Postgres>,
+) -> Result<Option<SnapShotBatch>, Error> {
+    let mut transaction: sqlx::Transaction<'_, sqlx::Postgres> = db_pool.begin().await?;
+
+    let batch_deletion =
+        snap_shot_batch_store::delete_snapshot_batches_by_id(&mut transaction, &id).await?;
+
+    let snapshots_deletion =
+        snapshot_store::delete_all_snapshots_by_id(&mut transaction, &id).await?;
+
+    if snapshots_deletion.is_none() || batch_deletion.is_none() {
+        transaction.rollback().await?;
+        tracing::error!("Cannot delete snap shot batch by id: {}. Wrong ID", id);
+        return Ok(None);
+    }
+    transaction.commit().await?;
+
+    Ok(Some(create_snapshot_batch_from_dto(
+        batch_deletion.unwrap(),
+        snapshots_deletion.unwrap(),
+    )))
+}
+
 fn create_snapshot_batch_from_dto(
     snap_shot_batch_dto: SnapShotBatchDTO,
     snap_shots: Vec<SnapShot>,
 ) -> SnapShotBatch {
-    let mut snap_shot_batch = SnapShotBatch {
+    let old_images: Vec<SnapShot> = snap_shots
+        .clone()
+        .into_iter()
+        .filter(|item| item.snap_shot_type == SnapShotType::Old)
+        .collect();
+
+    let new_images: Vec<SnapShot> = snap_shots
+        .clone()
+        .into_iter()
+        .filter(|item| item.snap_shot_type == SnapShotType::New)
+        .collect();
+
+    let lcs_diffs: Vec<SnapShot> = snap_shots
+        .clone()
+        .into_iter()
+        .filter(|item| item.snap_shot_type == SnapShotType::LcsDiff)
+        .collect();
+
+    SnapShotBatch {
         id: snap_shot_batch_dto.id,
         name: snap_shot_batch_dto.name,
         created_at: snap_shot_batch_dto.created_at,
         new_story_book_version: snap_shot_batch_dto.new_story_book_version,
         old_story_book_version: snap_shot_batch_dto.old_story_book_version,
-        diff_images_paths: CompareImagesReturn {
-            diff_images_paths: Vec::new(),
-            created_images_paths: Vec::new(),
-            deleted_images_paths: Vec::new(),
-        },
-        new_images_paths: Vec::new(),
-        old_images_paths: Vec::new(),
-    };
+        diff_image: snap_shots
+            .clone()
+            .into_iter()
+            .filter_map(|color_diff| {
+                if color_diff.snap_shot_type != SnapShotType::ColorDiff {
+                    return None;
+                }
 
-    for snap_shot in snap_shots {
-        match snap_shot.snap_shot_type {
-            SnapShotType::New => snap_shot_batch
-                .new_images_paths
-                .push(snap_shot.path.clone()),
-            SnapShotType::Old => snap_shot_batch
-                .old_images_paths
-                .push(snap_shot.path.clone()),
-            SnapShotType::Diff => snap_shot_batch
-                .diff_images_paths
-                .diff_images_paths
-                .push(snap_shot.path.clone()),
-            SnapShotType::Create => snap_shot_batch
-                .diff_images_paths
-                .created_images_paths
-                .push(snap_shot.path.clone()),
-            SnapShotType::Deleted => snap_shot_batch
-                .diff_images_paths
-                .deleted_images_paths
-                .push(snap_shot.path.clone()),
-        }
+                let old_image = old_images
+                    .clone()
+                    .into_iter()
+                    .find(|item| {
+                        return item.name == color_diff.name;
+                    })
+                    .unwrap();
+
+                let new_image = new_images
+                    .clone()
+                    .into_iter()
+                    .find(|item| {
+                        return item.name == color_diff.name;
+                    })
+                    .unwrap();
+
+                let lcs_image = lcs_diffs
+                    .clone()
+                    .into_iter()
+                    .find(|item| item.name == color_diff.name)
+                    .unwrap();
+
+                Some(DiffImage {
+                    new: new_image.into_snapshot_batch_image(),
+                    old: old_image.into_snapshot_batch_image(),
+                    color_diff: color_diff.into_snapshot_batch_image(),
+                    lcs_diff: lcs_image.into_snapshot_batch_image(),
+                })
+            })
+            .collect(),
+        deleted_image_paths: snap_shots
+            .clone()
+            .into_iter()
+            .filter_map(|snap| {
+                if snap.snap_shot_type == SnapShotType::Deleted {
+                    return Some(snap.into_snapshot_batch_image());
+                }
+
+                return None;
+            })
+            .collect(),
+        created_image_paths: snap_shots
+            .clone()
+            .into_iter()
+            .filter_map(|snap| {
+                if snap.snap_shot_type == SnapShotType::Create {
+                    return Some(snap.into_snapshot_batch_image());
+                }
+
+                return None;
+            })
+            .collect(),
     }
+}
 
-    snap_shot_batch
+pub async fn delete_all_batches(db_pool: sqlx::Pool<sqlx::Postgres>) -> Result<(), anyhow::Error> {
+    snap_shot_batch_store::delete_all_snapshot_batches(&db_pool).await
 }

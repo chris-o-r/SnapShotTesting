@@ -13,7 +13,7 @@ services:
     environment:
       BASE_URL: 0.0.0.0
       PORT: 8080
-      DB_NAME: mydatabase
+      DB_NAME: snapshots
       DB_USER: myuser
       DB_PASSWORD: mypassword
       DB_HOST: postgres
@@ -23,9 +23,9 @@ services:
       SELENIUM_PORT: 4444
       SELENIUM_HOST: selenium
       ASSETS_FOLDER: /var/lib/snap-shot/data
+      SELENIUM_MAX_INSTANCES: 6
     depends_on:
       - postgres
-      - redis
       - selenium
     volumes:
       - ../api-data/app:/var/lib/snap-shot/data
@@ -38,16 +38,7 @@ services:
     depends_on:
       - api
     environment:
-      VITE_API_BASE_URL: http://api:3307
-  redis:
-    image: redis
-    container_name: redis-snap-shot
-    ports:
-      - '6379:6379'
-    volumes:
-      - ../redis-data:/data
-      - ./redis.conf:/usr/local/etc/redis/redis.conf
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+      VITE_API_BASE_URL: http://api:3307/api
   postgres:
     image: postgres:14-alpine
     ports:
@@ -59,7 +50,8 @@ services:
     volumes:
       - ../postrgress/pgdata:/var/lib/postgresql/data
   selenium:
-    image: selenium/standalone-chrome:latest # Using the specified image
+    image: selenium/standalone-chrome:131.0 # Using the specified image
+    platform: linux/x86_64
     shm_size: "4g" # Shared memory size
     dns:
       - 8.8.8.8 # DNS settings
@@ -67,5 +59,6 @@ services:
       - "4444:4444" # Port mapping
       - "7900:7900" # Port mapping
     environment:
-      - SE_NODE_MAX_SESSIONS=5
+      - SE_NODE_MAX_SESSIONS=6
       - SE_NODE_OVERRIDE_MAX_SESSIONS=false
+      - SE_SCREEN_DPI=100

@@ -9,14 +9,13 @@ import axios, { AxiosResponse } from "axios";
 import { API_BASE_URL } from "../constants";
 import { QueryClient } from "../App";
 import { QUERY_KEYS } from "./constants";
-import { Job } from "@/types/job";
+import { operations } from "@/types/generated";
 
-export type CompareStoryBookUrlsRequest = {
-  new: string;
-  old: string;
-};
+export type CompareStoryBookUrlsRequest =
+  operations["handle_snapshot"]["requestBody"]["content"]["application/json"];
 
-export type CompareStoryBookUrlsResponse = Job;
+export type CompareStoryBookUrlsResponse =
+  operations["handle_snapshot"]["responses"]["200"]["content"]["application/json"];
 
 export const useFetchCompareStoryBookUrls = (
   params: CompareStoryBookUrlsRequest,
@@ -83,6 +82,6 @@ const compareStoryBookUrls: MutationFunction<
     .post<
       CompareStoryBookUrlsRequest,
       AxiosResponse<CompareStoryBookUrlsResponse>
-    >(`${API_BASE_URL}/snap-shot`, params)
+    >(`${API_BASE_URL}/snap-shots`, params)
     .then((res) => res.data);
 };

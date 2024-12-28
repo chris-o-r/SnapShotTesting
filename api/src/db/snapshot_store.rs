@@ -14,6 +14,8 @@ pub async fn insert_snapshots(
             batch_id,
             name,
             path,
+            width,
+            height,
             snap_shot_type,
             created_at
         )
@@ -21,38 +23,55 @@ pub async fn insert_snapshots(
         $1::UUID[],
         $2::VARCHAR(100)[],
         $3::VARCHAR(200)[],
-        $4::VARCHAR(100)[],
-        $5::TIMESTAMP[]
+        $4::DOUBLE PRECISION[],
+        $5::DOUBLE PRECISION[],
+        $6::VARCHAR(100)[],
+        $7::TIMESTAMP[]
     )";
 
-    let batch_ids: Vec<Uuid> = snap_shots.iter().map(|s| s.batch_id.clone()).collect();
-
-    let names = snap_shots
-        .iter()
-        .map(|s| s.name.clone())
-        .collect::<Vec<String>>();
-
-    let paths = snap_shots
-        .iter()
-        .map(|s| s.path.clone())
-        .collect::<Vec<String>>();
-
-    let snap_shot_types = snap_shots
-        .iter()
-        .map(|s| s.snap_shot_type.to_string())
-        .collect::<Vec<String>>();
-
-    let created_ats = snap_shots
-        .iter()
-        .map(|s| s.created_at)
-        .collect::<Vec<NaiveDateTime>>();
-
     sqlx::query_as::<_, SnapShot>(sql)
-        .bind(batch_ids)
-        .bind(names)
-        .bind(paths)
-        .bind(snap_shot_types)
-        .bind(created_ats)
+        .bind(
+            snap_shots
+                .iter()
+                .map(|s| s.batch_id.clone())
+                .collect::<Vec<Uuid>>(),
+        )
+        .bind(
+            snap_shots
+                .iter()
+                .map(|s| s.name.clone())
+                .collect::<Vec<String>>(),
+        )
+        .bind(
+            snap_shots
+                .iter()
+                .map(|s| s.path.clone())
+                .collect::<Vec<String>>(),
+        )
+        .bind(
+            snap_shots
+                .iter()
+                .map(|item| item.width)
+                .collect::<Vec<f64>>(),
+        )
+        .bind(
+            snap_shots
+                .iter()
+                .map(|item| item.height)
+                .collect::<Vec<f64>>(),
+        )
+        .bind(
+            snap_shots
+                .iter()
+                .map(|s| s.snap_shot_type.to_string())
+                .collect::<Vec<String>>(),
+        )
+        .bind(
+            snap_shots
+                .iter()
+                .map(|s| s.created_at)
+                .collect::<Vec<NaiveDateTime>>(),
+        )
         .fetch_all(&mut **transaction)
         .await
         .map_err(|err| {
@@ -80,4 +99,42 @@ pub async fn get_all_snapshots_by_batch_id(
         })?;
 
     Ok(snap_shots)
+}
+
+pub async fn delete_all_snapshots(pool: &Pool<Postgres>) -> Result<(), anyhow::Error> {
+    let sql = r"
+    DELETE FROM snap_shots
+    ";
+
+    sqlx::query(sql).execute(pool).await.map_err(|err| {
+        tracing::error!("Cannot delete all snapshots [{}]", err.to_string());
+        anyhow::Error::from(err)
+    })?;
+
+    Ok(())
+}
+
+pub async fn delete_all_snapshots_by_id(
+    transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: &uuid::Uuid,
+) -> Result<Option<Vec<SnapShot>>, anyhow::Error> {
+    let sql = r"
+    DELETE FROM snap_shots  
+    WHERE batch_id = $1
+    RETURNING *;";
+
+    let val = sqlx::query_as::<_, SnapShot>(sql)
+        .bind(id)
+        .fetch_all(&mut **transaction)
+        .await
+        .map_err(|err| {
+            tracing::error!("Cannot delete all snap shots by id: {}", err.to_string());
+            anyhow::Error::from(err)
+        })?;
+
+    if val.is_empty() {
+        return Ok(None);
+    }
+
+    Ok(Some(val))
 }

@@ -1,33 +1,44 @@
-# Stage 1: Build the React frontend
-FROM node:latest AS builder
+## Dockerfile
+################################
+## BUILD ENVIRONMENT ###########
+################################
 
-# Set the working directory
-WORKDIR /app
+# Use the official Node.js Alpine image (adjust based on your project's requirements)
+# You can find the appropriate image on Docker Hub: https://hub.docker.com/_/node
+# In this example, we're using node:20-alpine3.20
+# run in termilnal commande line "node --version to get the version of your app"
+FROM node:20-alpine3.20 As build
 
+# Set the working directory inside the container
+WORKDIR /usr/src/app
 
-# Copy the package.json and package-lock.json files
-COPY package.json package-lock.json ./
+# Copy package.json and package-lock.json into the container
+COPY package*.json package-lock.json ./
 
-# Remove the .env
-RUN rm -f .env
+# Install dependencies using npm
+RUN npm ci
 
-# Install dependencies
-RUN npm install
+# Copy the project files into the working directory
+COPY ./ ./
 
-# Copy the source code
-COPY . .
-
-# Build the application
+# Build the React app for production
 RUN npm run build
 
-# Stage 2: Create a lightweight image to serve the built files
-FROM nginx:alpine
+################################
+#### PRODUCTION ENVIRONMENT ####
+################################
 
-# Copy the built files from the builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Use the official NGINX image for production
+FROM nginx:stable-alpine as production
 
-# Expose the HTTP port
+# copy nginx configuration in side conf.d folder
+COPY --from=build /usr/src/app/nginx /etc/nginx/conf.d
+
+# Copy the build output from the dist folder into the Nginx html directory
+COPY --from=build /usr/src/app/dist /usr/share/nginx/html
+
+# Expose port 80 to allow access to the app
 EXPOSE 80
 
-# Command to run Nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Run Nginx in the foreground
+ENTRYPOINT ["nginx", "-g", "daemon off;"] 

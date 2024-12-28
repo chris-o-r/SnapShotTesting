@@ -6,10 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-diff_img = { git = "https://github.com/chris-adapt/diff-img" }
+bb8 = "0.9.0"
+diff_img = { git = "https://github.com/chris-o-r/diff-img" }
 serde = { version = "1.0.188", features = ["derive"] }
 uuid = { version = "1.9.0", features = ["v4", "serde"] }
-axum = "0.7.5"
+axum = "0.7.9"
 tokio = { version = "1.32.0", features = ["full"] }
 tower-http = { version = "0.5.0", features = ["fs", "trace", "cors"] }
 tower = { version = "0.4", features = ["util"] }
@@ -19,7 +20,6 @@ reqwest = "0.12.4"
 serde_with = "3.8.1"
 serde_as = "0.0.1"
 serde_json = "1.0.117"
-headless_chrome = "1.0.10"
 image = "0.25.1"
 futures-util = "0.3.30"
 anyhow = "1.0.86"
@@ -29,14 +29,21 @@ sqlx = { version = "0.7", default-features = false, features = [
     "postgres",
     "chrono",
     "uuid",
+    "migrate"
 ] }
-redis = { version = "0.25.1", features = ["tokio-comp"] }
-bb8-redis = { version = "0.15.0" }
 dotenv = "0.15.0"
 regex = "1.10.5"
 chrono = "0.4.38"
-fantoccini = "0.19.3"
+fantoccini = "0.21.2"
 lazy_static = "1.5.0"
+utoipa = { version = "4.2.3", features = ["chrono", "uuid", "axum_extras"] }
+utoipa-swagger-ui = { version = "7.1.0", features = [
+    "axum",
+    "vendored",
+], default-features = false }
+
+validator = { version = "0.19.0", features = ["derive"] }
+
 [lib]
 name = "lib"
 path = "src/lib.rs"

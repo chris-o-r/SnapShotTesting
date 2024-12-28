@@ -1,7 +1,9 @@
 api/target
 api/.env
+api/data
 api/assets/
 api/assets/.DS_Store
 
 .DS_Store
 fe/.env
+
