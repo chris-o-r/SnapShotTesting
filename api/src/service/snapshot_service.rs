@@ -18,7 +18,7 @@ use uuid::Uuid;
 
 use crate::{
     db::{
-        snap_shot_batch_store,
+        snapshot_batch_store,
         snapshot_store::{self},
     },
     models::{
@@ -39,7 +39,7 @@ pub async fn create_snap_shots(
 
     let mut transaction: sqlx::Transaction<'_, sqlx::Postgres> = db_pool.begin().await?;
 
-    let batch = snap_shot_batch_store::insert_snap_shot_batch(
+    let batch = snapshot_batch_store::insert_snap_shot_batch(
         &mut transaction,
         SnapShotBatchDTO {
             id: Uuid::new_v4(),

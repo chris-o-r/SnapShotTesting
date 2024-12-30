@@ -7,7 +7,7 @@ pub async fn insert_snap_shot_batch(
     snap_shot_batch: SnapShotBatchDTO,
 ) -> Result<SnapShotBatchDTO, anyhow::Error> {
     let sql = r"
-    INSERT INTO snap_shots_batches (
+    INSERT INTO snapshots_batches (
             name,
             created_at,
             new_story_book_version,
@@ -41,7 +41,7 @@ pub async fn get_all_snapshot_batches(
     pool: &Pool<Postgres>,
 ) -> Result<Vec<SnapShotBatchDTO>, anyhow::Error> {
     let sql = r"
-    SELECT * FROM snap_shots_batches
+    SELECT * FROM snapshots_batches
     ";
 
     let snap_shot_batches = sqlx::query_as::<_, SnapShotBatchDTO>(sql)
@@ -60,7 +60,7 @@ pub async fn get_snap_batch_by_id(
     id: &uuid::Uuid,
 ) -> Result<Option<SnapShotBatchDTO>, anyhow::Error> {
     let sql = r"
-    SELECT * FROM snap_shots_batches
+    SELECT * FROM snapshots_batches
     WHERE id = $1
     ";
 
@@ -78,7 +78,7 @@ pub async fn get_snap_batch_by_id(
 
 pub async fn delete_all_snapshot_batches(pool: &Pool<Postgres>) -> Result<(), anyhow::Error> {
     let sql = r"
-    DELETE FROM snap_shots_batches
+    DELETE FROM snapshots_batches
     ";
 
     sqlx::query(sql).execute(pool).await.map_err(|err| {
@@ -94,7 +94,7 @@ pub async fn delete_snapshot_batches_by_id(
     id: &uuid::Uuid,
 ) -> Result<Option<SnapShotBatchDTO>, anyhow::Error> {
     let sql = r"
-    DELETE FROM snap_shots_batches 
+    DELETE FROM snapshots_batches 
     WHERE id = $1
     RETURNING *;";
 

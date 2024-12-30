@@ -87,7 +87,7 @@ pub async fn get_all_snapshots_by_batch_id(
     batch_id: &Uuid,
 ) -> Result<Vec<SnapShot>, anyhow::Error> {
     let sql = r"
-    SELECT * FROM snap_shots where batch_id = $1";
+    SELECT * FROM snapshots where batch_id = $1";
 
     let snap_shots = sqlx::query_as::<_, SnapShot>(sql)
         .bind(batch_id)
@@ -103,7 +103,7 @@ pub async fn get_all_snapshots_by_batch_id(
 
 pub async fn delete_all_snapshots(pool: &Pool<Postgres>) -> Result<(), anyhow::Error> {
     let sql = r"
-    DELETE FROM snap_shots
+    DELETE FROM snapshots
     ";
 
     sqlx::query(sql).execute(pool).await.map_err(|err| {
@@ -119,7 +119,7 @@ pub async fn delete_all_snapshots_by_id(
     id: &uuid::Uuid,
 ) -> Result<Option<Vec<SnapShot>>, anyhow::Error> {
     let sql = r"
-    DELETE FROM snap_shots  
+    DELETE FROM snapshots  
     WHERE batch_id = $1
     RETURNING *;";
 
