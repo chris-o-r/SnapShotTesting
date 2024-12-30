@@ -54,7 +54,7 @@ pub async fn handle_snapshot(
     State(state): State<Arc<AppState>>,
     ValidateJson(payload): ValidateJson<SnapShotParams>,
 ) -> Result<SnapShotBatch, AppError> {
-    snapshot_service::create_snap_shots(payload.new.as_str(), payload.old.as_str(), &state.db_pool)
+    snapshot_service::create_snapshots(payload.new.as_str(), payload.old.as_str(), &state.db_pool)
         .await
         .map_err(|e| AppError(e, StatusCode::INTERNAL_SERVER_ERROR))
 }

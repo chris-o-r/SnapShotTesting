@@ -20,11 +20,11 @@ pub async fn get_snapshot_history(
     let snap_shot_batches = snapshot_batch_store::get_all_snapshot_batches(&db_pool).await?;
 
     for batch in snap_shot_batches {
-        let snap_shots = get_all_snapshots_by_batch_id(&db_pool, &batch.id).await?;
+        let snapshots = get_all_snapshots_by_batch_id(&db_pool, &batch.id).await?;
 
-        let snap_shot_batch = create_snapshot_batch_from_dto(batch, snap_shots);
+        let snapshot_batch = create_snapshot_batch_from_dto(batch, snapshots);
 
-        result.push(snap_shot_batch);
+        result.push(snapshot_batch);
     }
     Ok(result)
 }
@@ -38,9 +38,9 @@ pub async fn get_snap_shot_batch_by_id(
         None => return Ok(None),
     };
 
-    let snap_shots = get_all_snapshots_by_batch_id(&db_pool, &batch_dto.id).await?;
+    let snapshots = get_all_snapshots_by_batch_id(&db_pool, &batch_dto.id).await?;
 
-    Ok(Some(create_snapshot_batch_from_dto(batch_dto, snap_shots)))
+    Ok(Some(create_snapshot_batch_from_dto(batch_dto, snapshots)))
 }
 
 pub async fn delete_snapshot_batch_by_id(
@@ -70,21 +70,21 @@ pub async fn delete_snapshot_batch_by_id(
 
 fn create_snapshot_batch_from_dto(
     snap_shot_batch_dto: SnapShotBatchDTO,
-    snap_shots: Vec<SnapShot>,
+    snapshots: Vec<SnapShot>,
 ) -> SnapShotBatch {
-    let old_images: Vec<SnapShot> = snap_shots
+    let old_images: Vec<SnapShot> = snapshots
         .clone()
         .into_iter()
         .filter(|item| item.snap_shot_type == SnapShotType::Old)
         .collect();
 
-    let new_images: Vec<SnapShot> = snap_shots
+    let new_images: Vec<SnapShot> = snapshots
         .clone()
         .into_iter()
         .filter(|item| item.snap_shot_type == SnapShotType::New)
         .collect();
 
-    let lcs_diffs: Vec<SnapShot> = snap_shots
+    let lcs_diffs: Vec<SnapShot> = snapshots
         .clone()
         .into_iter()
         .filter(|item| item.snap_shot_type == SnapShotType::LcsDiff)
@@ -96,7 +96,7 @@ fn create_snapshot_batch_from_dto(
         created_at: snap_shot_batch_dto.created_at,
         new_story_book_version: snap_shot_batch_dto.new_story_book_version,
         old_story_book_version: snap_shot_batch_dto.old_story_book_version,
-        diff_image: snap_shots
+        diff_image: snapshots
             .clone()
             .into_iter()
             .filter_map(|color_diff| {
@@ -134,7 +134,7 @@ fn create_snapshot_batch_from_dto(
                 })
             })
             .collect(),
-        deleted_image_paths: snap_shots
+        deleted_image_paths: snapshots
             .clone()
             .into_iter()
             .filter_map(|snap| {
@@ -145,7 +145,7 @@ fn create_snapshot_batch_from_dto(
                 return None;
             })
             .collect(),
-        created_image_paths: snap_shots
+        created_image_paths: snapshots
             .clone()
             .into_iter()
             .filter_map(|snap| {

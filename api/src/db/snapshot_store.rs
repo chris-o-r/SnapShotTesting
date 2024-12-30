@@ -7,10 +7,10 @@ use crate::models::snapshot::SnapShot;
 
 pub async fn insert_snapshots(
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    snap_shots: Vec<SnapShot>,
+    snapshots: Vec<SnapShot>,
 ) -> Result<(), anyhow::Error> {
     let sql = r"
-    INSERT INTO snap_shots (
+    INSERT INTO snapshots (
             batch_id,
             name,
             path,
@@ -31,43 +31,43 @@ pub async fn insert_snapshots(
 
     sqlx::query_as::<_, SnapShot>(sql)
         .bind(
-            snap_shots
+            snapshots
                 .iter()
                 .map(|s| s.batch_id.clone())
                 .collect::<Vec<Uuid>>(),
         )
         .bind(
-            snap_shots
+            snapshots
                 .iter()
                 .map(|s| s.name.clone())
                 .collect::<Vec<String>>(),
         )
         .bind(
-            snap_shots
+            snapshots
                 .iter()
                 .map(|s| s.path.clone())
                 .collect::<Vec<String>>(),
         )
         .bind(
-            snap_shots
+            snapshots
                 .iter()
                 .map(|item| item.width)
                 .collect::<Vec<f64>>(),
         )
         .bind(
-            snap_shots
+            snapshots
                 .iter()
                 .map(|item| item.height)
                 .collect::<Vec<f64>>(),
         )
         .bind(
-            snap_shots
+            snapshots
                 .iter()
                 .map(|s| s.snap_shot_type.to_string())
                 .collect::<Vec<String>>(),
         )
         .bind(
-            snap_shots
+            snapshots
                 .iter()
                 .map(|s| s.created_at)
                 .collect::<Vec<NaiveDateTime>>(),
@@ -89,7 +89,7 @@ pub async fn get_all_snapshots_by_batch_id(
     let sql = r"
     SELECT * FROM snapshots where batch_id = $1";
 
-    let snap_shots = sqlx::query_as::<_, SnapShot>(sql)
+    let snapshots = sqlx::query_as::<_, SnapShot>(sql)
         .bind(batch_id)
         .fetch_all(pool)
         .await
@@ -98,7 +98,7 @@ pub async fn get_all_snapshots_by_batch_id(
             anyhow::Error::from(err)
         })?;
 
-    Ok(snap_shots)
+    Ok(snapshots)
 }
 
 pub async fn delete_all_snapshots(pool: &Pool<Postgres>) -> Result<(), anyhow::Error> {
