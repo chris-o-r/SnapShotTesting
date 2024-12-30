@@ -53,7 +53,7 @@ pub async fn delete_snapshot_batch_by_id(
         snapshot_batch_store::delete_snapshot_batches_by_id(&mut transaction, &id).await?;
 
     let snapshots_deletion =
-        snapshot_store::delete_all_snapshots_by_id(&mut transaction, &id).await?;
+        snapshot_store::delete_all_snapshots_by_batch_id(&mut transaction, &id).await?;
 
     if snapshots_deletion.is_none() || batch_deletion.is_none() {
         transaction.rollback().await?;

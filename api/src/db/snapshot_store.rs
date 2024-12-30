@@ -7,8 +7,8 @@ use crate::models::snapshot::SnapShot;
 
 pub async fn insert_snapshots(
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    snapshots: Vec<SnapShot>,
-) -> Result<(), anyhow::Error> {
+    snapshots: &Vec<SnapShot>,
+) -> Result<Vec<SnapShot>, sqlx::Error> {
     let sql = r"
     INSERT INTO snapshots (
             batch_id,
@@ -27,15 +27,11 @@ pub async fn insert_snapshots(
         $5::DOUBLE PRECISION[],
         $6::VARCHAR(100)[],
         $7::TIMESTAMP[]
-    )";
+    )
+    RETURNING *;";
 
-    sqlx::query_as::<_, SnapShot>(sql)
-        .bind(
-            snapshots
-                .iter()
-                .map(|s| s.batch_id.clone())
-                .collect::<Vec<Uuid>>(),
-        )
+    let res: std::result::Result<Vec<SnapShot>, sqlx::Error> = sqlx::query_as::<_, SnapShot>(sql)
+        .bind(snapshots.iter().map(|s| s.batch_id).collect::<Vec<Uuid>>())
         .bind(
             snapshots
                 .iter()
@@ -77,9 +73,9 @@ pub async fn insert_snapshots(
         .map_err(|err| {
             tracing::error!("Cannot insert snap shots [{}]", err.to_string());
             err
-        })?;
+        });
 
-    Ok(())
+    res
 }
 
 pub async fn get_all_snapshots_by_batch_id(
@@ -114,7 +110,7 @@ pub async fn delete_all_snapshots(pool: &Pool<Postgres>) -> Result<(), anyhow::E
     Ok(())
 }
 
-pub async fn delete_all_snapshots_by_id(
+pub async fn delete_all_snapshots_by_batch_id(
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     id: &uuid::Uuid,
 ) -> Result<Option<Vec<SnapShot>>, anyhow::Error> {
@@ -149,13 +145,13 @@ mod tests {
     use uuid::Uuid;
 
     #[sqlx::test]
-    async fn test_snapshot_batches(pool: PgPool) {
+    async fn test_snapshot_insert_snapshot(pool: PgPool) {
         let mut transaction: sqlx::Transaction<'_, sqlx::Postgres> = pool.begin().await.unwrap();
 
         let batch_id = Uuid::new_v4();
         let batch = insert_snapshots(
             &mut transaction,
-            vec![SnapShot {
+            &vec![SnapShot {
                 id: Uuid::new_v4(),
                 batch_id,
                 name: "name".to_string(),
@@ -167,13 +163,15 @@ mod tests {
             }],
         )
         .await;
-        assert!(batch.is_ok());
-
         let _ = transaction.commit().await;
+
+        assert!(batch.is_ok());
 
         let snapshots_by_batch = get_all_snapshots_by_batch_id(&pool, &batch_id)
             .await
             .unwrap();
+
+        assert_eq!(batch.unwrap()[0].id, snapshots_by_batch[0].id);
 
         assert_eq!(snapshots_by_batch.len(), 1);
 
@@ -186,5 +184,36 @@ mod tests {
             .unwrap();
 
         assert_eq!(snapshots_by_batch.len(), 0);
+    }
+
+    #[sqlx::test]
+    async fn test_snapshot_delete_all_snapshots_by_batch_id(pool: PgPool) {
+        let mut transaction: sqlx::Transaction<'_, sqlx::Postgres> = pool.begin().await.unwrap();
+
+        let batch_id = Uuid::new_v4();
+        let _batch = insert_snapshots(
+            &mut transaction,
+            &vec![SnapShot {
+                id: Uuid::new_v4(),
+                batch_id,
+                name: "name".to_string(),
+                path: "path".to_string(),
+                created_at: Utc::now().naive_utc(),
+                height: 100.0,
+                width: 100.0,
+                snap_shot_type: SnapShotType::New,
+            }],
+        )
+        .await;
+
+        let deleted = delete_all_snapshots_by_batch_id(&mut transaction, &batch_id)
+            .await
+            .unwrap();
+
+        
+        assert!(deleted.is_some());
+
+        
+
     }
 }

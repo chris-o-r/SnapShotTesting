@@ -217,7 +217,7 @@ pub async fn create_snapshots(
         })
         .collect::<Vec<SnapShot>>();
 
-    snapshot_store::insert_snapshots(&mut transaction, snap_shot_array).await?;
+    snapshot_store::insert_snapshots(&mut transaction, &snap_shot_array).await?;
 
     transaction.commit().await?;
 
