@@ -121,8 +121,27 @@ mod tests {
     use sqlx::PgPool;
     use uuid::Uuid;
 
+    async fn add_snapshot_batch(pool: &PgPool) -> SnapShotBatchDTO {
+        let mut transaction: sqlx::Transaction<'_, sqlx::Postgres> = pool.begin().await.unwrap();
+        let batch = insert_snap_shot_batch(
+            &mut transaction,
+            SnapShotBatchDTO {
+                id: Uuid::new_v4(),
+                created_at: Utc::now().naive_utc(),
+                name: format!("{}-{}", "", ""),
+                new_story_book_version: String::from(""),
+                old_story_book_version: String::from(""),
+            },
+        )
+        .await;
+
+        let _ = transaction.commit().await;
+
+        batch.unwrap()
+    }
+
     #[sqlx::test]
-    async fn test_snapshot_batches(pool: PgPool) {
+    async fn test_insert_snapshot_batches(pool: PgPool) {
         let mut transaction: sqlx::Transaction<'_, sqlx::Postgres> = pool.begin().await.unwrap();
         let batch = insert_snap_shot_batch(
             &mut transaction,
@@ -142,19 +161,55 @@ mod tests {
         let all_batches = get_all_snapshot_batches(&pool).await.unwrap();
 
         assert_eq!(all_batches.len(), 1);
+        assert_eq!(all_batches[0].id, batch.unwrap().id);
+    }
 
-        let batch_by_id = get_snap_batch_by_id(&pool, &all_batches[0].id)
-            .await
-            .unwrap();
+    #[sqlx::test]
+    async fn test_get_all_snapshot_batches(pool: PgPool) {
+        let batch = add_snapshot_batch(&pool).await;
+
+        let all_batches = get_all_snapshot_batches(&pool).await.unwrap();
+
+        assert_eq!(all_batches.len(), 1);
+        assert_eq!(all_batches[0].id, batch.id);
+    }
+
+    #[sqlx::test]
+    async fn test_get_snapshot_batch_by_id(pool: PgPool) {
+        let batch = add_snapshot_batch(&pool).await;
+
+        let batch_by_id = get_snap_batch_by_id(&pool, &batch.id).await.unwrap();
 
         assert!(batch_by_id.is_some());
+        assert_eq!(batch_by_id.unwrap().id, batch.id);
+    }
 
-        let all_deleted = delete_all_snapshot_batches(&pool).await;
+    #[sqlx::test]
+    async fn test_delete_all_snapshot_batches(pool: PgPool) {
+        add_snapshot_batch(&pool).await;
 
-        assert!(all_deleted.is_ok());
+        let _ = delete_all_snapshot_batches(&pool).await;
 
         let all_batches = get_all_snapshot_batches(&pool).await.unwrap();
 
         assert_eq!(all_batches.len(), 0);
+    }
+
+    #[sqlx::test]
+    async fn test_delete_snapshot_batches_by_id(pool: PgPool) {
+        let batch = add_snapshot_batch(&pool).await;
+        let mut transaction: sqlx::Transaction<'_, sqlx::Postgres> = pool.begin().await.unwrap();
+        let deleted_batch = delete_snapshot_batches_by_id(&mut transaction, &batch.id)
+            .await
+            .unwrap();
+
+        assert!(deleted_batch.is_some());
+        assert_eq!(deleted_batch.unwrap().id, batch.id);
+
+        let deleted_batch = delete_snapshot_batches_by_id(&mut transaction, &uuid::Uuid::new_v4())
+            .await
+            .unwrap();
+
+        assert!(deleted_batch.is_none());
     }
 }
