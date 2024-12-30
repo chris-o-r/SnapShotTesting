@@ -19,7 +19,7 @@ env:
   SELENIUM_HOST: selenium
   ASSETS_FOLDER: /var/lib/snap-shot/data
   SELENIUM_MAX_INSTANCES: 4
-  DATABASE_URL: postgres://myuser:mypassword@127.0.0.1:5432/snapshots
+  DATABASE_URL: postgres://myuser:mypassword@localhost:5432/snapshots
 
 
   
@@ -30,17 +30,16 @@ jobs:
    
 
     steps:
-      
     - uses: actions/checkout@v4
     - name: Build
       working-directory: ./api
       run: cargo build --verbose
     - name: Build DB
-      uses: huaxk/postgis-action@v1.0.0
+      uses: ikalnytskyi/action-setup-postgres@v7
       with:
-        postgresql db: snapshots
-        postgresql user: myuser
-        postgresql password: mypassword
+          database: snapshots
+          username: myuser
+          password: mypassword
     - name: Run tests
       working-directory: ./api
       run: cargo test --verbose
