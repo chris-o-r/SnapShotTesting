@@ -30,9 +30,9 @@ pub struct SnapShotBatch {
 
 impl SnapShotBatch {
     pub fn into_snapshots(self) -> Vec<SnapShot> {
-        let mut snap_shots = Vec::new();
+        let mut snapshots = Vec::new();
 
-        snap_shots.extend(self.created_image_paths.iter().map(|item| SnapShot {
+        snapshots.extend(self.created_image_paths.iter().map(|item| SnapShot {
             id: uuid::Uuid::new_v4(),
             created_at: self.created_at,
             batch_id: self.id,
@@ -43,7 +43,7 @@ impl SnapShotBatch {
             snap_shot_type: SnapShotType::Create,
         }));
 
-        snap_shots.extend(self.deleted_image_paths.iter().map(|item| SnapShot {
+        snapshots.extend(self.deleted_image_paths.iter().map(|item| SnapShot {
             id: uuid::Uuid::new_v4(),
             created_at: self.created_at,
             batch_id: self.id,
@@ -54,7 +54,7 @@ impl SnapShotBatch {
             snap_shot_type: SnapShotType::Deleted,
         }));
 
-        snap_shots.extend(
+        snapshots.extend(
             self.diff_image
                 .iter()
                 .map(|item| item.color_diff.clone())
@@ -69,7 +69,7 @@ impl SnapShotBatch {
                     snap_shot_type: SnapShotType::ColorDiff,
                 }),
         );
-        snap_shots.extend(
+        snapshots.extend(
             self.diff_image
                 .iter()
                 .map(|item| item.lcs_diff.clone())
@@ -85,7 +85,7 @@ impl SnapShotBatch {
                 }),
         );
 
-        snap_shots.extend(
+        snapshots.extend(
             self.diff_image
                 .iter()
                 .map(|item| item.new.clone())
@@ -101,7 +101,7 @@ impl SnapShotBatch {
                 }),
         );
 
-        snap_shots.extend(
+        snapshots.extend(
             self.diff_image
                 .iter()
                 .map(|item| item.old.clone())
@@ -117,7 +117,7 @@ impl SnapShotBatch {
                 }),
         );
 
-        snap_shots
+        snapshots
     }
 }
 

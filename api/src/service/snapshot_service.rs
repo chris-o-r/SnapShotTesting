@@ -27,7 +27,7 @@ use crate::{
     },
 };
 
-pub async fn create_snap_shots(
+pub async fn create_snapshots(
     new_url: &str,
     old_url: &str,
     db_pool: &sqlx::Pool<sqlx::Postgres>,
