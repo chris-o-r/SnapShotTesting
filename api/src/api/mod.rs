@@ -12,9 +12,9 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::{models::app_state::AppState, utils::env_variables};
 
 pub mod errors;
+pub mod extractors;
 pub mod routes;
 pub mod swagger_config;
-pub mod extractors;
 
 pub async fn serve() {
     let app_state: Arc<AppState> = Arc::new(AppState::new().await);

@@ -4,7 +4,7 @@ use crate::models::snapshot_batch::SnapShotBatchDTO;
 
 pub async fn insert_snap_shot_batch(
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    snap_shot_batch: SnapShotBatchDTO,
+    snap_shot_batch: &SnapShotBatchDTO,
 ) -> Result<SnapShotBatchDTO, anyhow::Error> {
     let sql = r"
     INSERT INTO snapshots_batches (
@@ -18,10 +18,10 @@ pub async fn insert_snap_shot_batch(
     ";
 
     let res: Vec<SnapShotBatchDTO> = sqlx::query_as::<_, SnapShotBatchDTO>(sql)
-        .bind(snap_shot_batch.name)
+        .bind(snap_shot_batch.name.to_string())
         .bind(snap_shot_batch.created_at)
-        .bind(snap_shot_batch.new_story_book_version)
-        .bind(snap_shot_batch.old_story_book_version)
+        .bind(snap_shot_batch.new_story_book_version.to_string())
+        .bind(snap_shot_batch.old_story_book_version.to_string())
         .fetch_all(&mut **transaction)
         .await
         .map_err(|err| {
@@ -125,7 +125,7 @@ mod tests {
         let mut transaction: sqlx::Transaction<'_, sqlx::Postgres> = pool.begin().await.unwrap();
         let batch = insert_snap_shot_batch(
             &mut transaction,
-            SnapShotBatchDTO {
+            &SnapShotBatchDTO {
                 id: Uuid::new_v4(),
                 created_at: Utc::now().naive_utc(),
                 name: format!("{}-{}", "", ""),
@@ -145,7 +145,7 @@ mod tests {
         let mut transaction: sqlx::Transaction<'_, sqlx::Postgres> = pool.begin().await.unwrap();
         let batch = insert_snap_shot_batch(
             &mut transaction,
-            SnapShotBatchDTO {
+            &SnapShotBatchDTO {
                 id: Uuid::new_v4(),
                 created_at: Utc::now().naive_utc(),
                 name: format!("{}-{}", "", ""),

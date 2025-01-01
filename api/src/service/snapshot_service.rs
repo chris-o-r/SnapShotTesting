@@ -41,7 +41,7 @@ pub async fn create_snapshots(
 
     let batch = snapshot_batch_store::insert_snap_shot_batch(
         &mut transaction,
-        SnapShotBatchDTO {
+        &SnapShotBatchDTO {
             id: Uuid::new_v4(),
             created_at: Utc::now().naive_utc(),
             name: format!("{}-{}", new_url, old_url),
