@@ -18,12 +18,9 @@ services:
       DB_PASSWORD: mypassword
       DB_HOST: postgres
       DB_PORT: 5432
-      REDIS_URL: redis://redis:6379/
-      REDIS_PORT: 6379
       SELENIUM_PORT: 4444
       SELENIUM_HOST: selenium
       ASSETS_FOLDER: /var/lib/snap-shot/data
-      SELENIUM_MAX_INSTANCES: 6
     depends_on:
       - postgres
       - selenium

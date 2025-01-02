@@ -1,17 +1,14 @@
 use dotenv::dotenv;
 use std::env;
 
-use crate::models::db_config::DBConfig;
-
 #[derive(Clone)]
 pub struct EnvVariables {
     pub base_url: String,
     pub port: String,
-    pub db_config: DBConfig,
+    pub db_url: String,
     pub selenium_port: String,
     pub selenium_host: String,
     pub assets_folder: String,
-    pub selenium_max_instances: usize,
 }
 
 impl EnvVariables {
@@ -28,7 +25,10 @@ impl EnvVariables {
             Err(_) => panic!("PORT must be set"),
         };
 
-        let db_config = DBConfig::new();
+        let db_url = match env::var("DATABASE_URL") {
+            Ok(val) => val,
+            Err(_) => panic!("DATABASE_URL must be set"),
+        };
 
         let selenium_port = match env::var("SELENIUM_PORT") {
             Ok(val) => val,
@@ -45,19 +45,13 @@ impl EnvVariables {
             Err(_) => panic!("ASSETS_FOLDER must be set"),
         };
 
-        let selenium_max_instances = match env::var("SELENIUM_MAX_INSTANCES") {
-            Ok(val) => val.parse::<usize>().unwrap(),
-            Err(_) => panic!("SELENIUM_MAX_INSTANCES must be set"),
-        };
-
         Self {
             assets_folder,
             base_url,
             port,
-            db_config,
+            db_url,
             selenium_port,
             selenium_host,
-            selenium_max_instances,
         }
     }
 }
@@ -72,6 +66,6 @@ mod tests {
 
         assert_eq!(env_variables.base_url.len() > 0, true);
         assert_eq!(env_variables.port.len() > 0, true);
-        assert_eq!(env_variables.db_config.get_db_url().len() > 0, true);
+        assert_eq!(env_variables.db_url.len() > 0, true);
     }
 }
