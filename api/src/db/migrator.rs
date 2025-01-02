@@ -8,7 +8,7 @@ static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
 
 pub async  fn up() {
     let env_variables = EnvVariables::new();
-    let db_url = env_variables.db_config.get_db_url();
+    let db_url = env_variables.db_url;
     let pool = PgPool::connect(&db_url).await.unwrap();
     tracing::info!(db_url);
 
